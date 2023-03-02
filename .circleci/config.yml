@@ -407,45 +407,6 @@ jobs:
       - run_test:
           pattern: 'opentracer'
 
-  # Building gevent (for which we never want wheels because they crash)
-  # on Python 2.7 requires Microsoft Visual C++ 9.0 which is not installed. :(
-  # which is not installed.
-  # profile-windows-27:
-  #   executor:
-  #     name: win/default
-  #     shell: bash.exe
-  #   # This is the number of tox envs for this job
-  #   parallelism: 4
-  #   steps:
-  #     - run: choco install python2
-  #     - run_tox_scenario:
-  #         store_coverage: false
-  #         pattern: '^py27-profile'
-
-  profile-windows-35:
-    executor:
-      name: win/default
-      shell: bash.exe
-    # This is the number of tox envs for this job
-    parallelism: 4
-    steps:
-      - run: choco install -y python --version=3.5.4 --side-by-side
-      - run_tox_scenario:
-          store_coverage: false
-          pattern: '^py35-profile'
-
-  profile-windows-36:
-    executor:
-      name: win/default
-      shell: bash.exe
-    # This is the number of tox envs for this job
-    parallelism: 4
-    steps:
-      - run: choco install -y python --version=3.6.8 --side-by-side
-      - run_tox_scenario:
-          store_coverage: false
-          pattern: '^py36-profile'
-
   # For whatever reason, choco does not install Python 3.7 correctly on Windows
   # profile-windows-37:
   #   executor:
@@ -553,15 +514,6 @@ jobs:
       - run_test:
           pattern: 'vendor'
 
-  boto:
-    <<: *machine_executor
-    parallelism: 4
-    steps:
-      - run_test:
-          pattern: '^boto'  # run boto and botocore
-          snapshot: true
-          docker_services: "localstack"
-
   ddtracerun:
     <<: *contrib_job
     parallelism: 4
@@ -592,12 +544,6 @@ jobs:
           pattern: 'asyncpg'
           snapshot: true
           docker_services: 'postgres'
-
-  pylons:
-    <<: *contrib_job_small
-    steps:
-      - run_test:
-          pattern: 'pylons'
 
   aiohttp:
     <<: *machine_executor
@@ -1134,7 +1080,6 @@ requires_tests: &requires_tests
     - algoliasearch
     - asgi
     - benchmarks
-    - boto
     - bottle
     - cassandra
     - celery
@@ -1172,7 +1117,6 @@ requires_tests: &requires_tests
     - opentracer
     - psycopg
     - pylibmc
-    - pylons
     - pymemcache
     - pymongo
     - pymysql
@@ -1202,9 +1146,6 @@ requires_tests: &requires_tests
     - urllib3
     - vertica
     - wsgi
-    # - profile-windows-27
-    # - profile-windows-35
-    # - profile-windows-36
     # - profile-windows-37
     # - profile-windows-38
     # - profile-windows-39
@@ -1235,7 +1176,6 @@ workflows:
       - algoliasearch: *requires_base_venvs
       - asgi: *requires_base_venvs
       - benchmarks: *requires_base_venvs
-      - boto: *requires_base_venvs
       - bottle: *requires_base_venvs
       - cassandra: *requires_base_venvs
       - celery: *requires_base_venvs
@@ -1273,7 +1213,6 @@ workflows:
       - opentracer: *requires_base_venvs
       - psycopg: *requires_base_venvs
       - pylibmc: *requires_base_venvs
-      - pylons: *requires_base_venvs
       - pymemcache: *requires_base_venvs
       - pymongo: *requires_base_venvs
       - pymysql: *requires_base_venvs
@@ -1303,9 +1242,6 @@ workflows:
       - urllib3: *requires_base_venvs
       - vertica: *requires_base_venvs
       - wsgi: *requires_base_venvs
-      # - profile-windows-27: *requires_pre_check
-      # - profile-windows-35: *requires_pre_check
-      # - profile-windows-36: *requires_pre_check
       # - profile-windows-37: *requires_pre_check
       # - profile-windows-38: *requires_pre_check
       # - profile-windows-39: *requires_pre_check

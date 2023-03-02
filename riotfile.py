@@ -25,9 +25,6 @@ if not PY_Latest:
 
 
 SUPPORTED_PYTHON_VERSIONS = [
-    (2, 7),
-    (3, 5),
-    (3, 6),
     (3, 7),
     (3, 8),
     (3, 9),
@@ -85,13 +82,13 @@ def select_pys(min_version=MIN_PYTHON_VERSION, max_version=MAX_PYTHON_VERSION):
     """Helper to select python versions from the list of versions we support
 
     >>> select_pys()
-    ['2.7', '3.5', '3.6', '3.7', '3.8', '3.9', '3.10', '3.11']
+    ['3.7', '3.8', '3.9', '3.10', '3.11']
     >>> select_pys(min_version='3')
-    ['3.5', '3.6', '3.7', '3.8', '3.9', '3.10', '3.11']
-    >>> select_pys(max_version='3')
-    ['2.7']
-    >>> select_pys(min_version='3.5', max_version='3.8')
-    ['3.5', '3.6', '3.7', '3.8']
+    ['3.7', '3.8', '3.9', '3.10', '3.11']
+    >>> select_pys(max_version='3.10')
+    ['3.7', '3.8', '3.9', '3.10']
+    >>> select_pys(min_version='3.7', max_version='3.9')
+    ['3.7', '3.8', '3.9']
     """
     min_version = str_to_version(min_version)
     max_version = str_to_version(max_version)
@@ -318,14 +315,7 @@ venv = Venv(
                     env={
                         "AGENT_VERSION": "latest",
                     },
-                    venvs=[
-                        Venv(pys=select_pys(max_version="3.5")),
-                        # DEV: attrs marked Python 3.6 as deprecated in 22.2.0,
-                        #      this logs a warning and causes these tests to fail
-                        # https://www.attrs.org/en/22.2.0/changelog.html#id1
-                        Venv(pys=["3.6"], pkgs={"attrs": "<22.2.0"}),
-                        Venv(pys=select_pys(min_version="3.7")),
-                    ],
+                    pys=select_pys(),
                 ),
                 Venv(
                     name="integration-snapshot",
@@ -333,14 +323,7 @@ venv = Venv(
                         "DD_TRACE_AGENT_URL": "http://localhost:9126",
                         "AGENT_VERSION": "testagent",
                     },
-                    venvs=[
-                        Venv(pys=select_pys(max_version="3.5")),
-                        # DEV: attrs marked Python 3.6 as deprecated in 22.2.0,
-                        #      this logs a warning and causes these tests to fail
-                        # https://www.attrs.org/en/22.2.0/changelog.html#id1
-                        Venv(pys=["3.6"], pkgs={"attrs": "<22.2.0"}),
-                        Venv(pys=select_pys(min_version="3.7")),
-                    ],
+                    pys=select_pys(),
                 ),
             ],
         ),
@@ -352,14 +335,9 @@ venv = Venv(
                 "gevent": latest,
             },
             venvs=[
-                Venv(pys="2.7", pkgs={"packaging": ["==17.1", latest]}),
-                Venv(
-                    pys=select_pys(min_version="3.5", max_version="3.6"),
-                    pkgs={"pytest-asyncio": latest, "packaging": ["==17.1", latest]},
-                ),
                 # FIXME[bytecode-3.11]: internal depends on bytecode, which is not python 3.11 compatible.
                 Venv(
-                    pys=select_pys(min_version="3.7"),
+                    pys=select_pys(),
                     pkgs={"pytest-asyncio": latest, "packaging": ["==17.1", "==22.0", latest]},
                 ),
             ],
@@ -376,27 +354,13 @@ venv = Venv(
             },
             venvs=[
                 Venv(
-                    pys="2.7",
-                    pkgs={
-                        "gevent": "~=1.3.0",
-                        "greenlet": "~=1.0",
-                    },
-                ),
-                Venv(
                     pkgs={
                         "aiobotocore": "<=2.3.1",
                         "aiohttp": latest,
                     },
                     venvs=[
                         Venv(
-                            pys=select_pys(min_version="3.5", max_version="3.6"),
-                            pkgs={
-                                "gevent": "~=1.3.0",
-                                "greenlet": "~=1.0",
-                            },
-                        ),
-                        Venv(
-                            pys=select_pys(min_version="3.7", max_version="3.8"),
+                            pys=select_pys(max_version="3.8"),
                             pkgs={
                                 "gevent": "~=1.4.0",
                                 # greenlet>0.4.17 wheels are incompatible with gevent and python>3.7
@@ -452,14 +416,9 @@ venv = Venv(
             pkgs={
                 "msgpack": latest,
                 "httpretty": "==0.9.7",
+                "pytest-asyncio": latest,
             },
-            venvs=[
-                Venv(pys="2.7"),
-                Venv(
-                    pys=select_pys(min_version="3.5"),
-                    pkgs={"pytest-asyncio": latest},
-                ),
-            ],
+            pys=select_pys(),
         ),
         Venv(
             name="vendor",
@@ -478,16 +437,6 @@ venv = Venv(
             },
             # venvs=[
             # FIXME: tests fail on vertica 1.x
-            # Venv(
-            #     # vertica-python dropped support for Python 2.7 in 1.3
-            #     pys="2.7",
-            #     pkgs={"vertica-python": ["~=1.2.0"]},
-            # ),
-            # Venv(
-            #     # vertica-python dropped support for Python 3.5/3.6 in 1.1
-            #     pys=select_pys(min_version="3.5", max_version="3.6"),
-            #     pkgs={"vertica-python": ["~=1.0"]},
-            # ),
             # Venv(
             #     # vertica-python added support for Python 3.9/3.10 in 1.0
             #     pys=select_pys(min_version="3.7", max_version="3.10"),
@@ -527,14 +476,8 @@ venv = Venv(
             name="falcon",
             command="pytest {cmdargs} tests/contrib/falcon",
             venvs=[
-                # FIXME: tests fail on Python 2.7 with falcon 2.0
-                # Venv(
-                #     # falcon dropped support for Python 2.7 in 3.0
-                #     pys="2.7",
-                #     pkgs={"falcon": "~=2.0"},
-                # ),
                 Venv(
-                    pys=select_pys(min_version="3.5"),
+                    pys=select_pys(),
                     pkgs={
                         "falcon": [
                             "~=3.0.0",
@@ -579,7 +522,7 @@ venv = Venv(
                 # Split into <3.8 and >=3.8 to pin importlib_metadata dependency for kombu
                 Venv(
                     # celery dropped support for Python 2.7/3.5 in 5.0
-                    pys=select_pys(max_version="3.7"),
+                    pys="3.7",
                     pkgs={
                         "pytest": "~=3.10",
                         "celery": [
@@ -600,22 +543,6 @@ venv = Venv(
                         ],
                         "redis": "~=3.5",
                         "kombu": "~=4.4",
-                    },
-                ),
-                Venv(
-                    # celery dropped support for Python 3.6 in 5.2
-                    pys="3.6",
-                    env={
-                        # https://docs.celeryproject.org/en/v5.0.5/userguide/testing.html#enabling
-                        "PYTEST_PLUGINS": "celery.contrib.pytest",
-                    },
-                    pkgs={
-                        "celery": [
-                            "~=5.0.0",
-                            "~=5.1.0",
-                        ],
-                        "redis": "~=3.5",
-                        "importlib_metadata": "<5.0",  # kombu using deprecated shims removed in importlib_metadata 5.0
                     },
                 ),
                 # Celery 5.x wants Python 3.6+
@@ -668,31 +595,6 @@ venv = Venv(
             ],
         ),
         Venv(
-            name="pylons",
-            command="python -m pytest {cmdargs} tests/contrib/pylons",
-            venvs=[
-                Venv(
-                    pys="2.7",
-                    pkgs={
-                        "pylons": ">=0.10,<0.11",
-                        "decorator": "<5",
-                        "pastedeploy": "<3",
-                        "webob": "<1.1",
-                    },
-                ),
-                Venv(
-                    pys="2.7",
-                    pkgs={
-                        "pylons": [
-                            ">=1.0,<1.1",
-                        ],
-                        "decorator": "<5",
-                        "pastedeploy": "<3",
-                    },
-                ),
-            ],
-        ),
-        Venv(
             name="cherrypy",
             command="python -m pytest {cmdargs} tests/contrib/cherrypy",
             venvs=[
@@ -709,7 +611,7 @@ venv = Venv(
                     # cherrypy dropped support for Python 2.7 in 18.0
                     # cherrypy dropped support for Python 3.5 in 18.7
                     # cherrypy added support for Python 3.11 in 18.7
-                    pys=select_pys(min_version="3.6"),
+                    pys=select_pys(),
                     pkgs={
                         "cherrypy": [">=18.0,<19", latest],
                         "more_itertools": "<8.11.0",
@@ -724,14 +626,7 @@ venv = Venv(
                 "mongoengine": latest,
             },
             venvs=[
-                Venv(
-                    # pymongo dropped support for Python 2.7/3.5/3.6 in 4.0
-                    pys=select_pys(max_version="3.6"),
-                    pkgs={"pymongo": ["~=3.4", "~=3.11", "~=3.13"]},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.9"), pkgs={"pymongo": ["~=3.11", "~=4.0", latest]}
-                ),
+                Venv(pys=select_pys(max_version="3.9"), pkgs={"pymongo": ["~=3.11", "~=4.0", latest]}),
                 Venv(
                     # pymongo added support for Python 3.10 in 3.12.1
                     # pymongo added support for Python 3.11 in 3.12.3
@@ -764,18 +659,8 @@ venv = Venv(
             },
             venvs=[
                 Venv(
-                    # django dropped support for Python 2.7 in 2.0
-                    pys="2.7",
-                    pkgs={"django": "~=1.11"},
-                ),
-                Venv(
-                    # django dropped support for Python 3.5 in 3.0
-                    pys="3.5",
-                    pkgs={"django": "~=2.2"},
-                ),
-                Venv(
                     # django dropped support for Python 3.6/3.7 in 4.0
-                    pys=select_pys(min_version="3.6", max_version="3.7"),
+                    pys="3.7",
                     pkgs={
                         "django": "~=3.2",
                         "channels": ["~=3.0", latest],
@@ -808,14 +693,7 @@ venv = Venv(
             },
             venvs=[
                 Venv(
-                    pys="3.5",
-                    pkgs={
-                        "django_hosts": "~=4.0",
-                        "django": "~=2.2",
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6"),
+                    pys=select_pys(),
                     pkgs={
                         "django_hosts": "~=4.0",
                         "django": "~=3.2",
@@ -836,31 +714,15 @@ venv = Venv(
             pkgs={"pytest-django": "==3.10.0"},
             venvs=[
                 Venv(
-                    # djangorestframework dropped support for Python 2.7 in 3.10.0
-                    pys="2.7",
-                    pkgs={
-                        "django": "==1.11",
-                        "djangorestframework": "~=3.9.3",
-                    },
-                ),
-                Venv(
-                    # djangorestframework dropped support for Python 3.5 in 3.13.0
-                    pys="3.5",
-                    pkgs={
-                        "django": ">=2.2,<2.3",
-                        "djangorestframework": "~=3.12",
-                    },
-                ),
-                Venv(
                     # djangorestframework dropped support for Django 2.x in 3.14
-                    pys=select_pys(min_version="3.6", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={
                         "django": ">=2.2,<2.3",
                         "djangorestframework": ["~=3.12", "~=3.13"],
                     },
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.6"),
+                    pys=select_pys(),
                     pkgs={
                         "django": "~=3.2",
                         "djangorestframework": ">=3.11,<3.12",
@@ -961,24 +823,7 @@ venv = Venv(
                 ),
                 # Flask >= 2.0.0
                 Venv(
-                    # flask dropped support for Python 3.6 in 2.1
-                    pys="3.6",
-                    pkgs={"flask": "~=2.0.0"},
-                ),
-                Venv(
-                    # flask dropped support for Python 3.6 in 2.1
-                    pys="3.6",
-                    command="python tests/ddtrace_run.py pytest {cmdargs} tests/contrib/flask_autopatch",
-                    env={
-                        "DD_SERVICE": "test.flask.service",
-                        "DD_PATCH_MODULES": "jinja2:false",
-                    },
-                    pkgs={"flask": "~=2.0.0"},
-                ),
-                Venv(
-                    # flask dropped support for Python 2.7/3.5 in 2.0
-                    # flask added support for Python 3.10/3.11 in 2.0
-                    pys=select_pys(min_version="3.7"),
+                    pys=select_pys(),
                     pkgs={
                         "flask": [
                             "~=2.0.0",
@@ -988,7 +833,7 @@ venv = Venv(
                     },
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.7"),
+                    pys=select_pys(),
                     command="python tests/ddtrace_run.py pytest {cmdargs} tests/contrib/flask_autopatch",
                     env={
                         "DD_SERVICE": "test.flask.service",
@@ -1031,35 +876,7 @@ venv = Venv(
                     },
                 ),
                 Venv(
-                    # flask-caching dropped support for Python 3.5 in 1.8
-                    pys="3.5",
-                    pkgs={
-                        "flask": "~=1.0.0",
-                        "flask-caching": "~=1.7.0",
-                        # https://github.com/pallets/itsdangerous/issues/290
-                        # DEV: Breaking change made in 2.0 release
-                        "itsdangerous": "<2.0",
-                        # https://github.com/pallets/markupsafe/issues/282
-                        # DEV: Breaking change made in 2.1.0 release
-                        "markupsafe": "<2.0",
-                    },
-                ),
-                Venv(
-                    # flask-caching dropped support for Python 3.6 in 1.11
-                    pys="3.6",
-                    pkgs={
-                        "flask": "~=1.0.0",
-                        "flask-caching": "~=1.10.0",
-                        # https://github.com/pallets/itsdangerous/issues/290
-                        # DEV: Breaking change made in 2.0 release
-                        "itsdangerous": "<2.0",
-                        # https://github.com/pallets/markupsafe/issues/282
-                        # DEV: Breaking change made in 2.1.0 release
-                        "markupsafe": "<2.0",
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7"),
+                    pys=select_pys(),
                     pkgs={
                         "flask": "~=1.1.0",
                         "flask-caching": ["~=1.10.0", latest],
@@ -1072,7 +889,7 @@ venv = Venv(
                     },
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.7"),
+                    pys=select_pys(),
                     pkgs={
                         "flask": [latest],
                         "flask-caching": ["~=1.10.0", latest],
@@ -1091,17 +908,7 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/mysql",
             venvs=[
                 Venv(
-                    # mysql-connector-python dropped support for Python 2.7/3.5 in 8.0.24
-                    pys=select_pys(max_version="3.5"),
-                    pkgs={"mysql-connector-python": ["==8.0.5", "==8.0.23"]},
-                ),
-                Venv(
-                    # mysql-connector-python dropped support for Python 3.6 in 8.0.29
-                    pys="3.6",
-                    pkgs={"mysql-connector-python": ["==8.0.5", "==8.0.29"]},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={"mysql-connector-python": ["==8.0.5", latest]},
                 ),
                 Venv(
@@ -1121,17 +928,11 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/psycopg",
             venvs=[
                 Venv(
-                    # psycopg2-binary dropped support for Python 2.7 in 2.9
-                    pys="2.7",
-                    # DEV: Use `psycopg2-binary` so we don't need PostgreSQL dev headers
+                    pys=select_pys(max_version="3.8"),
                     pkgs={"psycopg2-binary": "~=2.8.0"},
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.6", max_version="3.8"),
-                    pkgs={"psycopg2-binary": "~=2.8.0"},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6"),
+                    pys=select_pys(),
                     # psycopg2-binary added support for Python 3.9/3.10 in 2.9.1
                     # psycopg2-binary added support for Python 3.11 in 2.9.2
                     pkgs={"psycopg2-binary": ["~=2.9.2", latest]},
@@ -1158,16 +959,7 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/pynamodb",
             venvs=[
                 Venv(
-                    # pynamodb dropped support for Python 2.7/3.5 in 4.4
-                    pys=select_pys(max_version="3.5"),
-                    pkgs={
-                        "pynamodb": ["~=4.3.0"],
-                        "moto": ">=1.0,<2.0",
-                        "rsa": "<4.7.1",
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6"),
+                    pys=select_pys(),
                     pkgs={
                         "pynamodb": ["~=5.0", "~=5.3", latest],
                         "moto": ">=1.0,<2.0",
@@ -1189,13 +981,8 @@ venv = Venv(
             },
             venvs=[
                 Venv(
-                    # starlette dropped support for Python 3.6 in 0.20
-                    pys="3.6",
-                    pkgs={"starlette": ["~=0.14", "~=0.19"]},
-                ),
-                Venv(
                     # starlette added support for Python 3.9 in 0.14
-                    pys=select_pys(min_version="3.7", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={"starlette": ["~=0.14", "~=0.20", latest]},
                 ),
                 Venv(
@@ -1217,16 +1004,7 @@ venv = Venv(
                 Venv(
                     venvs=[
                         Venv(
-                            # sqlalchemy dropped support for Python 2.7/3.5/3.6 in 2.0
-                            pys=select_pys(max_version="3.6"),
-                            pkgs={
-                                "sqlalchemy": ["<2.0"],
-                                "psycopg2-binary": "~=2.8.0",
-                                "mysql-connector-python": "<8.0.24",
-                            },
-                        ),
-                        Venv(
-                            pys=select_pys(min_version="3.7", max_version="3.9"),
+                            pys=select_pys(max_version="3.9"),
                             pkgs={
                                 "sqlalchemy": ["~=1.3", "~=1.4", latest],
                                 "psycopg2-binary": latest,
@@ -1261,23 +1039,7 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/requests",
             venvs=[
                 Venv(
-                    # requests dropped support for Python 2.7 in 2.28
-                    pys="2.7",
-                    pkgs={
-                        "requests-mock": ">=1.4",
-                        "requests": ["~=2.26", "~=2.27"],
-                    },
-                ),
-                Venv(
-                    # requests dropped support for Python 3.5 in 2.26
-                    pys="3.5",
-                    pkgs={
-                        "requests-mock": ">=1.4",
-                        "requests": ["~=2.20", "~=2.25"],
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6"),
+                    pys=select_pys(),
                     pkgs={
                         "requests-mock": ">=1.4",
                         "requests": [
@@ -1323,17 +1085,11 @@ venv = Venv(
             ],
         ),
         Venv(
-            name="boto",
-            command="pytest {cmdargs} tests/contrib/boto",
-            venvs=[Venv(pys=select_pys(max_version="3.6"), pkgs={"boto": latest, "moto": "<1.0.0"})],
-        ),
-        Venv(
             name="botocore",
             command="pytest {cmdargs} tests/contrib/botocore",
             pkgs={"botocore": latest},
             venvs=[
-                Venv(pys=select_pys(min_version="3.5"), pkgs={"moto[all]": latest}),
-                Venv(pys=["2.7"], pkgs={"moto": ["~=1.0"], "rsa": ["<4.7.1"]}),
+                Venv(pys=select_pys(), pkgs={"moto[all]": latest}),
             ],
         ),
         Venv(
@@ -1344,17 +1100,7 @@ venv = Venv(
             },
             venvs=[
                 Venv(
-                    # mongoengine dropped support for Python 2.7 in 0.20
-                    pys="2.7",
-                    pkgs={"mongoengine": "~=0.19"},
-                ),
-                Venv(
-                    # mongoengine dropped support for Python 3.5 in 0.22
-                    pys="3.5",
-                    pkgs={"mongoengine": "<0.22"},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6", max_version="3.8"),
+                    pys=select_pys(max_version="3.8"),
                     pkgs={"mongoengine": ["~=0.23", latest]},
                 ),
                 Venv(
@@ -1371,7 +1117,7 @@ venv = Venv(
                 "httpx": latest,
                 "asgiref": ["~=3.0.0", "~=3.0", latest],
             },
-            pys=select_pys(min_version="3.6"),
+            pys=select_pys(),
             command="pytest {cmdargs} tests/contrib/asgi",
         ),
         Venv(
@@ -1379,7 +1125,7 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/mariadb",
             venvs=[
                 Venv(
-                    pys=select_pys(min_version="3.6", max_version="3.10"),
+                    pys=select_pys(max_version="3.10"),
                     pkgs={
                         "mariadb": [
                             "~=1.0.0",
@@ -1396,19 +1142,12 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/pymysql",
             venvs=[
                 Venv(
-                    # pymysql dropped support for Python 2.7/3.5 in 1.0
-                    pys=select_pys(max_version="3.5"),
-                    pkgs={
-                        "pymysql": "~=0.9",
-                    },
-                ),
-                Venv(
                     # pymysql added support for Python 3.8/3.9 in 0.10
                     pys=select_pys(min_version="3.8", max_version="3.9"),
                     pkgs={"pymysql": "~=0.10"},
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.6"),
+                    pys=select_pys(),
                     pkgs={
                         "pymysql": [
                             "~=1.0",
@@ -1428,19 +1167,7 @@ venv = Venv(
             },
             venvs=[
                 Venv(
-                    # pyramid dropped support for Python 2.7/3.5 in 2.0
-                    # pserve_app has PasteDeploy dependency, but PasteDeploy>=3.0 is incompatible with Python 2.7
-                    # pyramid>=2.0 no longer supports Python 2.7 and 3.5
-                    pys=select_pys(max_version="3.5"),
-                    pkgs={
-                        "pastedeploy": "<3.0",
-                        "pyramid": [
-                            "~=1.10",
-                        ],
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={
                         "pyramid": [
                             "~=1.10",
@@ -1463,17 +1190,8 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/aiobotocore",
             pkgs={"pytest-asyncio": latest, "async_generator": ["~=1.10"]},
             venvs=[
-                # async_generator 1.10 used because @asynccontextmanager was only available in Python 3.6+
-                # aiobotocore 1.x and higher require Python 3.6 or higher
-                # aiobotocore dropped Python 3.5 support in 0.12
                 Venv(
-                    pys="3.5",
-                    pkgs={
-                        "aiobotocore": ["~=0.11"],
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6"),
+                    pys=select_pys(),
                     pkgs={
                         "aiobotocore": ["~=1.4.2", "~=2.0.0", latest],
                     },
@@ -1491,12 +1209,7 @@ venv = Venv(
             },
             venvs=[
                 Venv(
-                    # fastapi dropped support for Python 3.6 in 0.84
-                    pys="3.6",
-                    pkgs={"fastapi": ["~=0.64.0", "~=0.83.0"]},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.10"),
+                    pys=select_pys(max_version="3.10"),
                     pkgs={"fastapi": ["~=0.64.0", "~=0.90.0", latest]},
                 ),
                 Venv(
@@ -1520,12 +1233,7 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/pytest/",
             venvs=[
                 Venv(
-                    pys=["2.7"],
-                    # pytest==4.6 is last to support python 2.7
-                    pkgs={"pytest": ">=4.0,<4.6", "msgpack": latest},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.5", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={
                         "pytest": [
                             ">=6.0,<7.0",
@@ -1554,7 +1262,7 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/asynctest/",
             venvs=[
                 Venv(
-                    pys=select_pys(min_version="3.5", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={
                         "pytest": [
                             ">=6.0,<7.0",
@@ -1567,43 +1275,30 @@ venv = Venv(
         Venv(
             name="pytest-bdd",
             command="pytest {cmdargs} tests/contrib/pytest_bdd/",
-            pkgs={"msgpack": latest},
+            pkgs={
+                "msgpack": latest,
+                "more_itertools": "<8.11.0",
+            },
             venvs=[
                 Venv(
-                    pys=["2.7"],
-                    # pytest-bdd==3.4 is last to support python 2.7
-                    pkgs={"pytest-bdd": ">=3.0,<3.5"},
+                    pys=select_pys(max_version="3.9"),
+                    pkgs={
+                        "pytest-bdd": [
+                            ">=4.0,<5.0",
+                            # FIXME: add support for v6.1
+                            ">=6.0,<6.1",
+                        ]
+                    },
                 ),
                 Venv(
+                    pys=select_pys(min_version="3.10"),
                     pkgs={
-                        "more_itertools": "<8.11.0",
+                        "pytest-bdd": [
+                            ">=4.0,<5.0",
+                            # FIXME: add support for v6.1
+                            ">=6.0,<6.1",
+                        ]
                     },
-                    venvs=[
-                        Venv(
-                            pys=["3.6"],
-                            pkgs={"pytest-bdd": [">=4.0,<5.0"]},
-                        ),
-                        Venv(
-                            pys=select_pys(min_version="3.7", max_version="3.9"),
-                            pkgs={
-                                "pytest-bdd": [
-                                    ">=4.0,<5.0",
-                                    # FIXME: add support for v6.1
-                                    ">=6.0,<6.1",
-                                ]
-                            },
-                        ),
-                        Venv(
-                            pys=select_pys(min_version="3.10"),
-                            pkgs={
-                                "pytest-bdd": [
-                                    ">=4.0,<5.0",
-                                    # FIXME: add support for v6.1
-                                    ">=6.0,<6.1",
-                                ]
-                            },
-                        ),
-                    ],
                 ),
             ],
         ),
@@ -1617,23 +1312,7 @@ venv = Venv(
                 # Versions between 1.14 and 1.20 have known threading issues
                 # See https://github.com/grpc/grpc/issues/18994
                 Venv(
-                    # grpcio dropped support for Python 2.7 in 1.27
-                    pys="2.7",
-                    pkgs={"grpcio": ["~=1.26.0"]},
-                ),
-                Venv(
-                    # grpcio dropped support for Python 3.5 in 1.40, but aio module (not compatible with Python 3.5)
-                    # was added in 1.32
-                    pys="3.5",
-                    pkgs={"grpcio": ["~=1.31.0"]},
-                ),
-                Venv(
-                    # grpcio dropped support for Python 3.6 in 1.49
-                    pys="3.6",
-                    pkgs={"grpcio": ["~=1.34.0", "~=1.48.0"]},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={"grpcio": ["~=1.34.0", latest]},
                 ),
                 Venv(
@@ -1658,12 +1337,7 @@ venv = Venv(
             },
             venvs=[
                 Venv(
-                    # grpcio dropped support for Python 3.6 in 1.49
-                    pys="3.6",
-                    pkgs={"grpcio": ["~=1.34.0", "~=1.48.0"]},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={"grpcio": ["~=1.34.0", latest]},
                 ),
                 Venv(
@@ -1682,7 +1356,7 @@ venv = Venv(
         Venv(
             name="graphene",
             command="pytest {cmdargs} tests/contrib/graphene",
-            pys=select_pys(min_version="3.6"),
+            pys=select_pys(),
             pkgs={
                 "graphene": ["~=3.0.0", latest],
                 "pytest-asyncio": latest,
@@ -1691,7 +1365,7 @@ venv = Venv(
         Venv(
             name="graphql",
             command="pytest {cmdargs} tests/contrib/graphql",
-            pys=select_pys(min_version="3.6"),
+            pys=select_pys(),
             pkgs={
                 "pytest-asyncio": latest,
                 "graphql-core": ["~=3.1.0", "~=3.2.0", latest],
@@ -1702,21 +1376,7 @@ venv = Venv(
             command="pytest tests/contrib/rq",
             venvs=[
                 Venv(
-                    # rq dropped support for Python 2.7 in 1.4.0
-                    pys="2.7",
-                    pkgs={
-                        "rq": [
-                            "~=1.3.0",
-                        ],
-                    },
-                ),
-                Venv(
-                    # rq dropped support for Python 3.5 in 1.12
-                    pys="3.5",
-                    pkgs={"rq": ["~=1.8.0", "~=1.11.1"]},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6", max_version="3.8"),
+                    pys=select_pys(max_version="3.8"),
                     pkgs={
                         "rq": [
                             "~=1.8.0",
@@ -1749,7 +1409,7 @@ venv = Venv(
         ),
         Venv(
             name="httpx",
-            pys=select_pys(min_version="3.6"),
+            pys=select_pys(),
             command="pytest {cmdargs} tests/contrib/httpx",
             pkgs={
                 "pytest-asyncio": latest,
@@ -1765,12 +1425,7 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/urllib3",
             venvs=[
                 Venv(
-                    # urllib3 to drop support for Python 2.7/3.5/3.6 in 2.0
-                    pys=select_pys(max_version="3.6"),
-                    pkgs={"urllib3": ["~=1.26.4", "<2.0"]},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.8"),
+                    pys=select_pys(max_version="3.8"),
                     pkgs={"urllib3": ["~=1.26.4", latest]},
                 ),
                 Venv(
@@ -1803,12 +1458,7 @@ venv = Venv(
             name="algoliasearch",
             command="pytest {cmdargs} tests/contrib/algoliasearch",
             venvs=[
-                Venv(
-                    # algoliasearch dropped support for Python 2.7 in 3.0
-                    pys="2.7",
-                    pkgs={"algoliasearch": ["~=2.5", "~=2.6"]},
-                ),
-                Venv(pys=select_pys(min_version="3.5", max_version="3.8"), pkgs={"algoliasearch": ["~=2.5", latest]}),
+                Venv(pys=select_pys(max_version="3.8"), pkgs={"algoliasearch": ["~=2.5", latest]}),
                 Venv(
                     # algoliasearch added support for Python 3.9, 3.10, 3.11 in 3.0
                     pys=select_pys(min_version="3.9"),
@@ -1819,7 +1469,7 @@ venv = Venv(
         Venv(
             name="aiopg",
             command="pytest {cmdargs} tests/contrib/aiopg",
-            pys=select_pys(min_version="3.5", max_version="3.9"),
+            pys=select_pys(max_version="3.9"),
             pkgs={
                 "sqlalchemy": latest,
                 "aiopg": "~=0.16.0",
@@ -1867,40 +1517,14 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/aiohttp",
             pkgs={
                 "pytest-aiohttp": [latest],
+                "pytest-asyncio": [latest],
+                "aiohttp": [
+                    "~=3.7",
+                    latest,
+                ],
+                "yarl": "~=1.0",
             },
-            venvs=[
-                Venv(
-                    pys="3.5",
-                    pkgs={
-                        # aiohttp 3.8 dropped support for Python 3.5
-                        "aiohttp": ["~=2.3", "<3.8"],
-                        "async-timeout": ["<4.0.0"],
-                        "yarl": "~=0.18.0",
-                    },
-                ),
-                Venv(
-                    # pytest-asyncio is incompatible with aiohttp 3.0+ in Python 3.6
-                    pys="3.6",
-                    pkgs={
-                        "aiohttp": [
-                            "~=3.7",
-                            latest,
-                        ],
-                        "yarl": "~=1.0",
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7"),
-                    pkgs={
-                        "pytest-asyncio": [latest],
-                        "aiohttp": [
-                            "~=3.7",
-                            latest,
-                        ],
-                        "yarl": "~=1.0",
-                    },
-                ),
-            ],
+            pys=select_pys(min_version="3.7"),
         ),
         Venv(
             name="aiohttp_jinja2",
@@ -1910,20 +1534,7 @@ venv = Venv(
             },
             venvs=[
                 Venv(
-                    pys="3.6",
-                    pkgs={
-                        "aiohttp": [
-                            "~=3.7",
-                            latest,
-                        ],
-                        "aiohttp_jinja2": [
-                            "~=1.5.0",
-                            latest,
-                        ],
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7"),
+                    pys=select_pys(),
                     pkgs={
                         "pytest-asyncio": [latest],
                         "aiohttp": [
@@ -1952,7 +1563,7 @@ venv = Venv(
                     },
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.6"),
+                    pys=select_pys(),
                     pkgs={
                         "jinja2": ["~=3.0.0", latest],
                     },
@@ -1972,15 +1583,7 @@ venv = Venv(
             name="redis",
             venvs=[
                 Venv(
-                    # redis dropped support for Python 2.7/3.5 in 4.0
-                    pys=select_pys(max_version="3.5"),
-                    command="pytest {cmdargs} --ignore-glob='*asyncio*' tests/contrib/redis",
-                    pkgs={
-                        "redis": ["~=3.5.3"],
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6", max_version="3.10"),
+                    pys=select_pys(max_version="3.10"),
                     command="pytest {cmdargs} tests/contrib/redis",
                     pkgs={
                         "pytest-asyncio": latest,
@@ -2004,7 +1607,7 @@ venv = Venv(
         ),
         Venv(
             name="aredis",
-            pys=select_pys(min_version="3.6", max_version="3.9"),
+            pys=select_pys(max_version="3.9"),
             command="pytest {cmdargs} tests/contrib/aredis",
             pkgs={
                 "pytest-asyncio": latest,
@@ -2017,7 +1620,7 @@ venv = Venv(
             pkgs={"pytest-asyncio": latest},
             venvs=[
                 Venv(
-                    pys=select_pys(min_version="3.6", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={"yaaredis": ["~=2.0.0", latest]},
                 ),
                 Venv(
@@ -2037,14 +1640,14 @@ venv = Venv(
             venvs=[
                 Venv(
                     # sanic added support for Python 3.9 in 20.12
-                    pys=select_pys(min_version="3.7", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={
                         "sanic": "~=20.12",
                         "pytest-sanic": "~=1.6.2",
                     },
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={
                         "sanic": ["~=21.3", "~=21.12"],
                         "sanic-testing": "~=0.8.3",
@@ -2059,7 +1662,7 @@ venv = Venv(
                     },
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.10"),
+                    pys=select_pys(max_version="3.10"),
                     pkgs={
                         "sanic": ["~=22.3", "~=22.12"],
                         "sanic-testing": "~=22.3.0",
@@ -2081,28 +1684,7 @@ venv = Venv(
             pkgs={"responses": "~=0.16.0", "cryptography": "<39"},
             venvs=[
                 Venv(
-                    # snowflake-connector-python dropped support for Python 2.7 in 2.2.0
-                    pys="2.7",
-                    pkgs={
-                        "snowflake-connector-python": "~=2.1.0",
-                    },
-                ),
-                Venv(
-                    # snowflake-connector-python dropped support for Python 3.5 in 2.3.0
-                    pys="3.5",
-                    pkgs={
-                        "snowflake-connector-python": "~=2.2.0",
-                    },
-                ),
-                Venv(
-                    # snowflake-connector-python dropped support for Python 3.6 in 2.7.5
-                    pys="3.6",
-                    pkgs={
-                        "snowflake-connector-python": ["~=2.3.0", "~=2.7.4"],
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.8"),
+                    pys=select_pys(max_version="3.8"),
                     pkgs={"snowflake-connector-python": ["~=2.3.0", "~=2.9.0", latest]},
                 ),
                 Venv(
@@ -2133,7 +1715,7 @@ venv = Venv(
         Venv(
             name="aioredis",
             # aioredis was merged into redis as of v2.0.1, no longer maintained and does not support Python 3.11 onward
-            pys=select_pys(min_version="3.6", max_version="3.10"),
+            pys=select_pys(max_version="3.10"),
             command="pytest {cmdargs} tests/contrib/aioredis",
             pkgs={
                 "pytest-asyncio": latest,
@@ -2152,12 +1734,7 @@ venv = Venv(
             venvs=[
                 # our test_asyncpg.py uses `yield` in an async function and is not compatible with Python 3.5
                 Venv(
-                    # asyncpg dropped support for Python 3.6 in 0.27
-                    pys="3.6",
-                    pkgs={"asyncpg": ["~=0.23", "~=0.26"]},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.7", max_version="3.8"),
+                    pys=select_pys(max_version="3.8"),
                     pkgs={"asyncpg": ["~=0.23", latest]},
                 ),
                 Venv(
@@ -2180,7 +1757,7 @@ venv = Venv(
         Venv(
             name="asyncio",
             command="pytest {cmdargs} tests/contrib/asyncio",
-            pys=select_pys(min_version="3.5"),
+            pys=select_pys(),
             pkgs={
                 "pytest-asyncio": latest,
             },
@@ -2188,13 +1765,7 @@ venv = Venv(
         Venv(
             name="futures",
             command="pytest {cmdargs} tests/contrib/futures",
-            venvs=[
-                # futures is backported for 2.7
-                Venv(pys=["2.7"], pkgs={"futures": ["~=3.0", "~=3.1", "~=3.2", "~=3.4"]}),
-                Venv(
-                    pys=select_pys(min_version="3.5"),
-                ),
-            ],
+            pys=select_pys(),
         ),
         Venv(
             name="sqlite3",
@@ -2211,15 +1782,7 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/dogpile_cache",
             venvs=[
                 Venv(
-                    # dogpile.cache dropped support for Python 2.7/3.5 in 1.0
-                    pys=select_pys(max_version="3.5"),
-                    pkgs={
-                        "dogpile.cache": ["~=0.8", "~=0.9"],
-                        "decorator": "<5",
-                    },
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6", max_version="3.10"),
+                    pys=select_pys(max_version="3.10"),
                     pkgs={
                         "dogpile.cache": [
                             "~=0.9",
@@ -2261,12 +1824,12 @@ venv = Venv(
                     command="pytest {cmdargs} tests/opentracer/core",
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.5"),
+                    pys=select_pys(),
                     command="pytest {cmdargs} tests/opentracer/test_tracer_asyncio.py",
                     pkgs={"pytest-asyncio": latest},
                 ),
                 Venv(
-                    pys=select_pys(min_version="3.5"),
+                    pys=select_pys(),
                     command="pytest {cmdargs} tests/opentracer/test_tracer_tornado.py",
                     # TODO: update opentracing tests to be compatible with Tornado v6.
                     # https://github.com/opentracing/opentracing-python/issues/136
@@ -2278,14 +1841,7 @@ venv = Venv(
                     command="pytest {cmdargs} tests/opentracer/test_tracer_gevent.py",
                     venvs=[
                         Venv(
-                            pys=select_pys(max_version="3.6"),
-                            pkgs={
-                                "gevent": "~=1.2.0",
-                                "greenlet": "~=1.0",
-                            },
-                        ),
-                        Venv(
-                            pys=select_pys(min_version="3.7", max_version="3.8"),
+                            pys=select_pys(max_version="3.8"),
                             pkgs={
                                 "gevent": ["~=1.4.0"],
                                 # greenlet>0.4.17 wheels are incompatible with gevent and python>3.7
@@ -2342,15 +1898,8 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/pylibmc",
             venvs=[
                 Venv(
-                    # pylibmc dropped support for Python 2.7/3.5 in 1.6.2
-                    pys=select_pys(max_version="3.5"),
-                    pkgs={
-                        "pylibmc": "~=1.6.1",
-                    },
-                ),
-                Venv(
                     # pylibmc added support for Python 3.8/3.9/3.10 in 1.6.2
-                    pys=select_pys(min_version="3.6", max_version="3.10"),
+                    pys=select_pys(max_version="3.10"),
                     pkgs={
                         "pylibmc": ["~=1.6.2", latest],
                     },
@@ -2367,18 +1916,6 @@ venv = Venv(
             name="kombu",
             command="pytest {cmdargs} tests/contrib/kombu",
             venvs=[
-                Venv(
-                    # kombu dropped support for Python 2.5/3.5/3.6 in 5.0
-                    pys=select_pys(max_version="3.6"),
-                    pkgs={
-                        "kombu": [
-                            ">=4.0,<4.1",
-                            ">=4.6,<4.7",
-                        ],
-                        # kombu using deprecated shims removed in importlib-metadata 5.0 pre-Python 3.8
-                        "importlib_metadata": "<5.0",
-                    },
-                ),
                 # Kombu>=4.2 only supports Python 3.7+
                 Venv(
                     pys="3.7",
@@ -2407,17 +1944,6 @@ venv = Venv(
             name="tornado",
             command="python -m pytest {cmdargs} tests/contrib/tornado",
             venvs=[
-                Venv(
-                    # tornado dropped support for Python 2.7 in 6.0
-                    pys="2.7",
-                    pkgs={
-                        "tornado": [
-                            "~=4.5",
-                            # "~=5.1.1"  # FIXME: tests fail on Python 2.7 with tornado 5.1.1
-                        ],
-                        "futures": ["~=3.3", latest],
-                    },
-                ),
                 # FIXME: tests fail on Python 3.5/3.6 with tornado 5.1, 6.1
                 # Venv(
                 #     # tornado dropped support for Python 3.5/3.6 in 6.2
@@ -2446,12 +1972,7 @@ venv = Venv(
             command="pytest {cmdargs} tests/contrib/mysqldb",
             venvs=[
                 Venv(
-                    # mysqlclient dropped support for Python 2.7/3.5 in 2.0
-                    pys=select_pys(max_version="3.5"),
-                    pkgs={"mysqlclient": "~=1.4.6"},
-                ),
-                Venv(
-                    pys=select_pys(min_version="3.6", max_version="3.9"),
+                    pys=select_pys(max_version="3.9"),
                     pkgs={"mysqlclient": ["~=2.0", "~=2.1", latest]},
                 ),
                 Venv(
@@ -2464,7 +1985,7 @@ venv = Venv(
         Venv(
             name="molten",
             command="pytest {cmdargs} tests/contrib/molten",
-            pys=select_pys(min_version="3.6"),
+            pys=select_pys(),
             pkgs={
                 "molten": [">=1.0,<1.1", latest],
             },
@@ -2483,7 +2004,7 @@ venv = Venv(
         Venv(
             name="aws_lambda",
             command="pytest {cmdargs} tests/contrib/aws_lambda",
-            pys=select_pys(min_version="3.7", max_version="3.9"),
+            pys=select_pys(max_version="3.9"),
             pkgs={
                 "boto3": latest,
                 "datadog-lambda": [">=4.66.0", latest],
