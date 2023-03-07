@@ -111,7 +111,6 @@ venv = Venv(
     },
     env={
         "DD_TESTING_RAISE": "1",
-        "DD_REMOTE_CONFIGURATION_ENABLED": "false",
     },
     venvs=[
         Venv(
