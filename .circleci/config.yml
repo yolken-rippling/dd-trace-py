@@ -50,6 +50,16 @@ contrib_job_small: &contrib_job_small
   executor: ddtrace_dev_small
   parallelism: 1
 
+# Default riot cli options as env variables
+riot_config: &riot_config
+  # Configure riot via env variables
+  # DEV: log level must be the integer level of `logging.INFO` for `riot -v`
+  RIOT_LOG_LEVEL: 20
+  RIOT_RUN_PASS_ENV: true
+  RIOT_RUN_SKIP_BASE_INSTALL: true
+  RIOT_RUN_EXITFIRST: true
+
+
 commands:
   save_coverage:
     description: "Save coverage.py results to workspace"
@@ -164,11 +174,13 @@ commands:
                 services: testagent << parameters.docker_services >>
             - run:
                 environment:
+                  <<: *riot_config
                   DD_TRACE_AGENT_URL: http://localhost:9126
+
                 command: |
                   mv .riot .ddriot
                   # Sort the hashes to ensure a consistent ordering/division between each node
-                  riot list --hash-only '<<parameters.pattern>>' | sort | circleci tests split | xargs -n 1 -I {} ./scripts/ddtest riot -v run --exitfirst --pass-env -s {} $([[ << pipeline.parameters.coverage >> == false ]] && echo '--no-cov' )
+                  riot list --hash-only '<<parameters.pattern>>' | sort | circleci tests split | xargs -n 1 -I {} ./scripts/ddtest riot run {} $([[ << pipeline.parameters.coverage >> == false ]] && echo '--no-cov' )
       - unless:
           condition:
               << parameters.snapshot >>
@@ -182,9 +194,12 @@ commands:
                       name: "Waiting for << parameters.wait >>"
                       command: riot -v run 'wait' << parameters.wait >>
             - run:
+                environment:
+                  <<: *riot_config
+
                 command: |
                   # Sort the hashes to ensure a consistent ordering/division between each node
-                  riot list --hash-only '<<parameters.pattern>>' | sort | circleci tests split | xargs -n 1 -I {} riot -v run --exitfirst --pass-env -s {} $([[ << pipeline.parameters.coverage >> == false ]] && echo '--no-cov' )
+                  riot list --hash-only '<<parameters.pattern>>' | sort | circleci tests split | xargs -n 1 -I {} riot run {} $([[ << pipeline.parameters.coverage >> == false ]] && echo '--no-cov' )
       - save_pip_cache
       - when:
           condition:
@@ -266,28 +281,44 @@ jobs:
       - setup_riot
       - run:
           name: "Formatting check"
-          command: riot run -s fmt && git diff --exit-code
+          environment:
+            <<: *riot_config
+          command: riot run fmt && git diff --exit-code
       - run:
           name: "Flake8 check"
-          command: riot run -s flake8
+          environment:
+            <<: *riot_config
+          command: riot run flake8
       - run:
           name: "Slots check"
-          command: riot run -s slotscheck
+          environment:
+            <<: *riot_config
+          command: riot run slotscheck
       - run:
           name: "Mypy check"
-          command: riot run -s mypy
+          environment:
+            <<: *riot_config
+          command: riot run mypy
       - run:
           name: "Codespell check"
-          command: riot run -s codespell
+          environment:
+            <<: *riot_config
+          command: riot run codespell
       - run:
           name: "Run riotfile.py tests"
-          command: riot run -s riot-helpers
+          environment:
+            <<: *riot_config
+          command: riot run riot-helpers
       - run:
           name: "Test agent snapshot check"
-          command: riot run -s snapshot-fmt && git diff --exit-code
+          environment:
+            <<: *riot_config
+          command: riot run snapshot-fmt && git diff --exit-code
       - run:
           name: "Run scripts/*.py tests"
-          command: riot run -s scripts
+          environment:
+            <<: *riot_config
+          command: riot run scripts
 
   ccheck:
     executor: cimg_base
@@ -350,9 +381,11 @@ jobs:
       - checkout
       - setup_riot
       - run:
+          environment:
+            <<: *riot_config
           name: "Generate base virtual environments."
           # DEV: riot list -i tracer lists all supported Python versions
-          command: "riot list -i tracer | circleci tests split | xargs -I PY riot -v generate --python=PY"
+          command: "riot list -i tracer | circleci tests split | xargs -I PY riot generate --python=PY"
       - persist_to_workspace:
           root: .
           paths:
@@ -546,10 +579,12 @@ jobs:
       - start_docker_services:
           services: ddagent
       - run:
+          environment:
+            <<: *riot_config
           command: |
             mv .riot .ddriot
             # Sort the hashes to ensure a consistent ordering/division between each node
-            riot list --hash-only 'integration-latest' | sort | circleci tests split | xargs -n 1 -I {} ./scripts/ddtest riot -v run --pass-env -s {}
+            riot list --hash-only 'integration-latest' | sort | circleci tests split | xargs -n 1 -I {} ./scripts/ddtest riot run {}
 
   integration_testagent:
     <<: *machine_executor
@@ -783,9 +818,11 @@ jobs:
       - start_docker_services:
           services: ddagent
       - run:
+          environment:
+            <<: *riot_config
           command: |
             mv .riot .ddriot
-            ./scripts/ddtest riot -v run --pass-env -s 'gunicorn'
+            ./scripts/ddtest riot run 'gunicorn'
 
   httplib:
     <<: *machine_executor
@@ -1139,6 +1176,7 @@ jobs:
       - setup_riot
       - checkout
       - run:
+          # DEV: Don't use `environment: *riot_config` here because we different settings
           command: |
              riot -v run docs
              mkdir -p /tmp/docs

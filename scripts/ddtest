@@ -22,6 +22,10 @@ if [[ "${CIRCLECI}" = "true" ]]; then
                    -e CIRCLE_NODE_INDEX \
                    -e CIRCLE_WORKFLOW_ID \
                    -e DD_TRACE_AGENT_URL \
+                   -e RIOT_LOG_LEVEL \
+                   -e RIOT_RUN_PASS_ENV \
+                   -e RIOT_RUN_SKIP_BASE_INSTALL \
+                   -e RIOT_RUN_EXITFIRST \
                    --no-TTY \
                    --quiet-pull \
                    --rm \
