@@ -3,8 +3,10 @@ from cpython.bytearray cimport PyByteArray_CheckExact
 from libc cimport stdint
 from libc.string cimport strlen
 
+import math
 import threading
 
+from .compat import stringify
 from ._utils cimport PyBytesLike_Check
 
 
@@ -153,6 +155,52 @@ cdef inline int pack_text(msgpack_packer *pk, object text) except? -1:
 
     raise TypeError("Unhandled text type: %r" % type(text))
 
+
+cdef inline tuple _split_meta_metrics(object span):
+    cdef dict meta = {}
+    cdef dict metrics = {}
+
+    if span._metrics:
+        metrics.update(span._metrics)
+
+    for key, value in span._meta.items():
+        if value is None:
+            if key == "_dd.measured":
+                value = 1
+            else:
+                continue
+
+        if not isinstance(value, (int, float, str, bytes)):
+            try:
+                value = stringify(value)
+            except ValueError:
+                continue
+        elif isinstance(value, int):
+            value = float(value)
+
+        if key == "http.status_code":
+            meta[key] = str(value)
+            continue
+        elif key == "port":
+            if not isinstance(value, int):
+                value = int(value)
+            metrics[key] = value
+            continue
+        elif key == "_dd1.sr.eausr":
+            metrics[key] = float(value)
+            continue
+        elif key == "service.version":
+            key = "version"
+
+        if isinstance(value, float):
+            if math.isnan(value) or math.isinf(value):
+                meta[key] = str(value)
+            else:
+                metrics[key] = value
+            continue
+        else:
+            meta[key] = value
+    return (meta, metrics)
 
 cdef class StringTable(object):
     cdef dict _table
@@ -534,55 +582,45 @@ cdef class MsgpackEncoderV03(MsgpackEncoderBase):
     cdef void * get_dd_origin_ref(self, str dd_origin):
         return string_to_buff(dd_origin)
 
-    cdef inline int _pack_meta(self, object meta, char *dd_origin) except? -1:
+    cdef inline int _pack_meta(self, dict meta, char *dd_origin) except? -1:
         cdef Py_ssize_t L
         cdef int ret
-        cdef dict d
 
-        if PyDict_CheckExact(meta):
-            d = <dict> meta
-            L = len(d)
+        L = len(meta)
+        if dd_origin is not NULL:
+            L += 1
+        if L > ITEM_LIMIT:
+            raise ValueError("dict is too large")
+
+        ret = msgpack_pack_map(&self.pk, L)
+        if ret == 0:
+            for k, v in meta.items():
+                ret = pack_text(&self.pk, k)
+                if ret != 0: break
+                ret = pack_text(&self.pk, v)
+                if ret != 0: break
             if dd_origin is not NULL:
-                L += 1
-            if L > ITEM_LIMIT:
-                raise ValueError("dict is too large")
+                ret = pack_bytes(&self.pk, _ORIGIN_KEY, _ORIGIN_KEY_LEN)
+                if ret == 0:
+                    ret = pack_bytes(&self.pk, dd_origin, strlen(dd_origin))
+        return ret
 
-            ret = msgpack_pack_map(&self.pk, L)
-            if ret == 0:
-                for k, v in d.items():
-                    ret = pack_text(&self.pk, k)
-                    if ret != 0: break
-                    ret = pack_text(&self.pk, v)
-                    if ret != 0: break
-                if dd_origin is not NULL:
-                    ret = pack_bytes(&self.pk, _ORIGIN_KEY, _ORIGIN_KEY_LEN)
-                    if ret == 0:
-                        ret = pack_bytes(&self.pk, dd_origin, strlen(dd_origin))
-            return ret
-
-        raise TypeError("Unhandled meta type: %r" % type(meta))
-
-    cdef inline int _pack_metrics(self, object metrics) except? -1:
+    cdef inline int _pack_metrics(self, dict metrics) except? -1:
         cdef Py_ssize_t L
         cdef int ret
-        cdef dict d
 
-        if PyDict_CheckExact(metrics):
-            d = <dict> metrics
-            L = len(d)
-            if L > ITEM_LIMIT:
-                raise ValueError("dict is too large")
+        L = len(metrics)
+        if L > ITEM_LIMIT:
+            raise ValueError("dict is too large")
 
-            ret = msgpack_pack_map(&self.pk, L)
-            if ret == 0:
-                for k, v in d.items():
-                    ret = pack_text(&self.pk, k)
-                    if ret != 0: break
-                    ret = pack_number(&self.pk, v)
-                    if ret != 0: break
-            return ret
-
-        raise TypeError("Unhandled metrics type: %r" % type(metrics))
+        ret = msgpack_pack_map(&self.pk, L)
+        if ret == 0:
+            for k, v in metrics.items():
+                ret = pack_text(&self.pk, k)
+                if ret != 0: break
+                ret = pack_number(&self.pk, v)
+                if ret != 0: break
+        return ret
 
     cdef int pack_span(self, object span, void *dd_origin) except? -1:
         cdef int ret
@@ -590,11 +628,15 @@ cdef class MsgpackEncoderV03(MsgpackEncoderBase):
         cdef int has_span_type
         cdef int has_meta
         cdef int has_metrics
+        cdef dict meta
+        cdef dict metrics
+
+        meta, metrics = _split_meta_metrics(span)
 
         has_error = <bint> (span.error != 0)
         has_span_type = <bint> (span.span_type is not None)
-        has_meta = <bint> (len(span._meta) > 0 or dd_origin is not NULL)
-        has_metrics = <bint> (len(span._metrics) > 0)
+        has_meta = <bint> (len(meta) > 0 or dd_origin is not NULL)
+        has_metrics = <bint> (len(metrics) > 0)
         has_parent_id = <bint> (span.parent_id is not None)
 
         L = 7 + has_span_type + has_meta + has_metrics + has_error + has_parent_id
@@ -658,13 +700,13 @@ cdef class MsgpackEncoderV03(MsgpackEncoderBase):
             if has_meta:
                 ret = pack_bytes(&self.pk, <char *> b"meta", 4)
                 if ret != 0: return ret
-                ret = self._pack_meta(span._meta, <char *> dd_origin)
+                ret = self._pack_meta(meta, <char *> dd_origin)
                 if ret != 0: return ret
 
             if has_metrics:
                 ret = pack_bytes(&self.pk, <char *> b"metrics", 7)
                 if ret != 0: return ret
-                ret = self._pack_metrics(span._metrics)
+                ret = self._pack_metrics(metrics)
                 if ret != 0: return ret
 
         return ret
@@ -707,6 +749,8 @@ cdef class MsgpackEncoderV05(MsgpackEncoderBase):
 
     cdef int pack_span(self, object span, void *dd_origin) except? -1:
         cdef int ret
+        cdef dict meta
+        cdef dict metrics
 
         ret = msgpack_pack_array(&self.pk, 12)
         if ret != 0: return ret
@@ -721,31 +765,33 @@ cdef class MsgpackEncoderV05(MsgpackEncoderBase):
         _ = span._trace_id_64bits
         ret = msgpack_pack_uint64(&self.pk, _ if _ is not None else 0)
         if ret != 0: return ret
-        
+
         _ = span.span_id
         ret = msgpack_pack_uint64(&self.pk, _ if _ is not None else 0)
         if ret != 0: return ret
-        
+
         _ = span.parent_id
         ret = msgpack_pack_uint64(&self.pk, _ if _ is not None else 0)
         if ret != 0: return ret
-        
+
         _ = span.start_ns
         ret = msgpack_pack_int64(&self.pk, _ if _ is not None else 0)
         if ret != 0: return ret
-        
+
         _ = span.duration_ns
         ret = msgpack_pack_int64(&self.pk, _ if _ is not None else 0)
         if ret != 0: return ret
-        
+
         _ = span.error
         ret = msgpack_pack_int32(&self.pk, _ if _ is not None else 0)
         if ret != 0: return ret
 
-        ret = msgpack_pack_map(&self.pk, len(span._meta) + (dd_origin is not NULL))
+        meta, metrics = _split_meta_metrics(span)
+
+        ret = msgpack_pack_map(&self.pk, len(meta) + (dd_origin is not NULL))
         if ret != 0: return ret
-        if span._meta:
-            for k, v in span._meta.items():
+        if meta:
+            for k, v in meta.items():
                 ret = self._pack_string(k)
                 if ret != 0: return ret
                 ret = self._pack_string(v)
@@ -755,11 +801,11 @@ cdef class MsgpackEncoderV05(MsgpackEncoderBase):
             if ret != 0: return ret
             ret = msgpack_pack_uint32(&self.pk, <stdint.uint32_t> dd_origin)
             if ret != 0: return ret
-        
-        ret = msgpack_pack_map(&self.pk, len(span._metrics))
+
+        ret = msgpack_pack_map(&self.pk, len(metrics))
         if ret != 0: return ret
-        if span._metrics:
-            for k, v in span._metrics.items():
+        if metrics:
+            for k, v in metrics.items():
                 ret = self._pack_string(k)
                 if ret != 0: return ret
                 ret = pack_number(&self.pk, v)

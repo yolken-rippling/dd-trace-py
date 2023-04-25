@@ -80,3 +80,8 @@ benchmark-otel-span:
   extends: .benchmarks
   variables:
     SCENARIO: "otel_span"
+
+benchmark-encoder:
+  extends: .benchmarks
+  variables:
+    SCENARIO: "encoder"

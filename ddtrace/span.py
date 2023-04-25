@@ -46,7 +46,7 @@ from .internal.sampling import update_sampling_decision
 
 _NUMERIC_TAGS = (ANALYTICS_SAMPLE_RATE_KEY,)
 _TagNameType = Union[Text, bytes]
-_MetaDictType = Dict[_TagNameType, Text]
+_MetaDictType = Dict[_TagNameType, Any]
 _MetricDictType = Dict[_TagNameType, NumericType]
 
 log = get_logger(__name__)
@@ -284,55 +284,11 @@ class Span(object):
         :param value: Value to assign for the tag
         :type value: ``stringify``-able value
         """
-
         if not isinstance(key, six.string_types):
             log.warning("Ignoring tag pair %s:%s. Key must be a string.", key, value)
             return
 
-        # Special case, force `http.status_code` as a string
-        # DEV: `http.status_code` *has* to be in `meta` for metrics
-        #   calculated in the trace agent
-        if key == http.STATUS_CODE:
-            value = str(value)
-
-        # Determine once up front
-        val_is_an_int = is_integer(value)
-
-        # Explicitly try to convert expected integers to `int`
-        # DEV: Some integrations parse these values from strings, but don't call `int(value)` themselves
-        INT_TYPES = (net.TARGET_PORT,)
-        if key in INT_TYPES and not val_is_an_int:
-            try:
-                value = int(value)
-                val_is_an_int = True
-            except (ValueError, TypeError):
-                pass
-
-        # Set integers that are less than equal to 2^53 as metrics
-        if value is not None and val_is_an_int and abs(value) <= 2 ** 53:
-            self.set_metric(key, value)
-            return
-
-        # All floats should be set as a metric
-        elif isinstance(value, float):
-            self.set_metric(key, value)
-            return
-
-        # Key should explicitly be converted to a float if needed
-        elif key in _NUMERIC_TAGS:
-            if value is None:
-                log.debug("ignoring not number metric %s:%s", key, value)
-                return
-
-            try:
-                # DEV: `set_metric` will try to cast to `float()` for us
-                self.set_metric(key, value)
-            except (TypeError, ValueError):
-                log.warning("error setting numeric metric %s:%s", key, value)
-
-            return
-
-        elif key == MANUAL_KEEP_KEY:
+        if key == MANUAL_KEEP_KEY:
             self.context.sampling_priority = USER_KEEP
             update_sampling_decision(self.context, SamplingMechanism.MANUAL, True)
             return
@@ -342,45 +298,13 @@ class Span(object):
             return
         elif key == SERVICE_KEY:
             self.service = value
-        elif key == SERVICE_VERSION_KEY:
-            # Also set the `version` tag to the same value
-            # DEV: Note that we do no return, we want to set both
-            self.set_tag(VERSION_KEY, value)
-        elif key == SPAN_MEASURED_KEY:
-            # Set `_dd.measured` tag as a metric
-            # DEV: `set_metric` will ensure it is an integer 0 or 1
-            if value is None:
-                value = 1
-            self.set_metric(key, value)
-            return
+        else:
+            self._meta[key] = value
 
-        try:
-            self._meta[key] = stringify(value)
-            if key in self._metrics:
-                del self._metrics[key]
-        except Exception:
-            log.warning("error setting tag %s, ignoring it", key, exc_info=True)
-
-    def set_tag_str(self, key, value):
-        # type: (_TagNameType, Text) -> None
-        """Set a value for a tag. Values are coerced to unicode in Python 2 and
-        str in Python 3, with decoding errors in conversion being replaced with
-        U+FFFD.
-        """
-        try:
-            self._meta[key] = ensure_text(value, errors="replace")
-        except Exception as e:
-            if config._raise:
-                raise e
-            log.warning("Failed to set text tag '%s'", key, exc_info=True)
-
-    def _remove_tag(self, key):
-        # type: (_TagNameType) -> None
-        if key in self._meta:
-            del self._meta[key]
+    set_tag_str = set_tag
 
     def get_tag(self, key):
-        # type: (_TagNameType) -> Optional[Text]
+        # type: (_TagNameType) -> Optional[Any]
         """Return the given tag or None if it doesn't exist."""
         return self._meta.get(key, None)
 
@@ -398,53 +322,10 @@ class Span(object):
             for k, v in iter(tags.items()):
                 self.set_tag(k, v)
 
-    def set_metric(self, key, value):
-        # type: (_TagNameType, NumericType) -> None
-        # This method sets a numeric tag value for the given key.
-
-        # Enforce a specific connstant for `_dd.measured`
-        if key == SPAN_MEASURED_KEY:
-            try:
-                value = int(bool(value))
-            except (ValueError, TypeError):
-                log.warning("failed to convert %r tag to an integer from %r", key, value)
-                return
-
-        # FIXME[matt] we could push this check to serialization time as well.
-        # only permit types that are commonly serializable (don't use
-        # isinstance so that we convert unserializable types like numpy
-        # numbers)
-        if type(value) not in numeric_types:
-            try:
-                value = float(value)
-            except (ValueError, TypeError):
-                log.debug("ignoring not number metric %s:%s", key, value)
-                return
-
-        # don't allow nan or inf
-        if math.isnan(value) or math.isinf(value):
-            log.debug("ignoring not real metric %s:%s", key, value)
-            return
-
-        if key in self._meta:
-            del self._meta[key]
-        self._metrics[key] = value
-
-    def set_metrics(self, metrics):
-        # type: (_MetricDictType) -> None
-        if metrics:
-            for k, v in iteritems(metrics):
-                self.set_metric(k, v)
-
-    def get_metric(self, key):
-        # type: (_TagNameType) -> Optional[NumericType]
-        """Return the given metric or None if it doesn't exist."""
-        return self._metrics.get(key)
-
-    def get_metrics(self):
-        # type: () -> _MetricDictType
-        """Return all metrics."""
-        return self._metrics.copy()
+    set_metric = set_tag
+    set_metrics = set_tags
+    get_metric = get_tag
+    get_metrics = get_tags
 
     def set_traceback(self, limit=20):
         # type: (int) -> None
