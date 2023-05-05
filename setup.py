@@ -403,11 +403,6 @@ setup(
     ext_modules=ext_modules
     + cythonize(
         [
-            # Cython.Distutils.Extension(
-            #     "ddtrace.internal._rand",
-            #     sources=["ddtrace/internal/_rand.pyx"],
-            #     language="c",
-            # ),
             Cython.Distutils.Extension(
                 "ddtrace.internal._tagset",
                 sources=["ddtrace/internal/_tagset.pyx"],
