@@ -467,6 +467,7 @@ setup(
             "ddtrace.internal.tracing_utils",
             path="src/tracing_utils/Cargo.toml",
             binding=Binding.PyO3,
+            debug=False,
         ),
     ],
 )

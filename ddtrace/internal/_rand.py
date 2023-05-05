@@ -1,5 +1,6 @@
-from .tracing_utils import trace_id
 from ddtrace.internal import forksafe
+
+from .tracing_utils import trace_id
 
 
 seed = trace_id.reseed

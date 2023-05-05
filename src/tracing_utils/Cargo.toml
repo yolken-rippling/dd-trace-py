@@ -8,6 +8,6 @@ name = "tracing_utils"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.18.3"
+pyo3 = { version = "0.18.3", features = ["extension-module"] }
 xorshift = "0.1.3"
 rand = "0.8.5"
