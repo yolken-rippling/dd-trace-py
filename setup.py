@@ -1,16 +1,21 @@
+from distutils.command.clean import clean as CleanCommand
+import glob
 import hashlib
 import os
 import platform
 import shutil
 import sys
 import tarfile
-import glob
 
-from setuptools import setup, find_packages, Extension
+from pkg_resources import get_build_platform
+from setuptools import Extension
+from setuptools import find_packages
+from setuptools import setup
 from setuptools.command.build_ext import build_ext as BuildExtCommand
 from setuptools.command.build_py import build_py as BuildPyCommand
-from pkg_resources import get_build_platform
-from distutils.command.clean import clean as CleanCommand
+from setuptools_rust import Binding
+from setuptools_rust import RustExtension
+
 
 try:
     # ORDER MATTERS
@@ -394,15 +399,15 @@ setup(
         "Programming Language :: Python :: 3.11",
     ],
     use_scm_version={"write_to": "ddtrace/_version.py"},
-    setup_requires=["setuptools_scm[toml]>=4", "cython"],
+    setup_requires=["setuptools_scm[toml]>=4", "cython", "setuptools_rust"],
     ext_modules=ext_modules
     + cythonize(
         [
-            Cython.Distutils.Extension(
-                "ddtrace.internal._rand",
-                sources=["ddtrace/internal/_rand.pyx"],
-                language="c",
-            ),
+            # Cython.Distutils.Extension(
+            #     "ddtrace.internal._rand",
+            #     sources=["ddtrace/internal/_rand.pyx"],
+            #     language="c",
+            # ),
             Cython.Distutils.Extension(
                 "ddtrace.internal._tagset",
                 sources=["ddtrace/internal/_tagset.pyx"],
@@ -457,4 +462,11 @@ setup(
     )
     + get_exts_for("wrapt")
     + get_exts_for("psutil"),
+    rust_extensions=[
+        RustExtension(
+            "ddtrace.internal.tracing_utils",
+            path="src/tracing_utils/Cargo.toml",
+            binding=Binding.PyO3,
+        ),
+    ],
 )

@@ -1,0 +1,13 @@
+[package]
+name = "tracing_utils"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "tracing_utils"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.18.3"
+xorshift = "0.1.3"
+rand = "0.8.5"
