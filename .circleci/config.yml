@@ -78,6 +78,11 @@ commands:
       # Make sure we install and run riot on Python 3
       - run: pip3 install riot==0.17.3
 
+  setup_cargo:
+    description: "Install Cargo"
+    steps:
+      - run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+
   save_pip_cache:
     description: "Save pip cache directory"
     steps:
@@ -232,6 +237,7 @@ jobs:
     executor: python310
     steps:
       - checkout
+      - setup_cargo
       - setup_riot
       - run:
           name: "Formatting check"
@@ -270,9 +276,11 @@ jobs:
       - checkout
       - run: sudo apt-get update
       - run: sudo apt-get install --yes clang-format gcc-10 g++-10 python3 python3-setuptools python3-pip cppcheck
+      - setup_cargo
       - run: scripts/cformat.sh
       - run: scripts/cppcheck.sh
       - run: DD_COMPILE_DEBUG=1 DD_TESTING_RAISE=1 CC=gcc-10 CXX=g++-10 pip -vvv install .
+
 
   coverage_report:
     executor: python310
