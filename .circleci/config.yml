@@ -454,14 +454,6 @@ jobs:
       - run_test:
           pattern: 'vendor'
 
-  boto:
-    <<: *machine_executor
-    parallelism: 4
-    steps:
-      - run_test:
-          pattern: '^boto'  # run boto and botocore
-          snapshot: true
-          docker_services: "localstack"
 
   ddtracerun:
     <<: *contrib_job
@@ -498,14 +490,6 @@ jobs:
           snapshot: true
           docker_services: 'postgres'
 
-  pylons:
-    <<: *contrib_job_small
-    docker:
-      - image: *ddtrace_dev_image
-      - *testagent
-    steps:
-      - run_test:
-          pattern: 'pylons'
 
   aiohttp:
     <<: *machine_executor
@@ -1110,7 +1094,6 @@ requires_tests: &requires_tests
     - asgi
     - aws_lambda
     - benchmarks
-    - boto
     - bottle
     - cassandra
     - celery
@@ -1153,7 +1136,6 @@ requires_tests: &requires_tests
     - psycopg
     - psycopg2
     - pylibmc
-    - pylons
     - pymemcache
     - pymongo
     - pymysql
@@ -1210,7 +1192,6 @@ workflows:
       - asgi: *requires_base_venvs
       - aws_lambda: *requires_base_venvs
       - benchmarks: *requires_base_venvs
-      - boto: *requires_base_venvs
       - bottle: *requires_base_venvs
       - cassandra: *requires_base_venvs
       - celery: *requires_base_venvs
@@ -1253,7 +1234,6 @@ workflows:
       - psycopg: *requires_base_venvs
       - psycopg2: *requires_base_venvs
       - pylibmc: *requires_base_venvs
-      - pylons: *requires_base_venvs
       - pymemcache: *requires_base_venvs
       - pymongo: *requires_base_venvs
       - pymysql: *requires_base_venvs

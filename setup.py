@@ -1,16 +1,19 @@
+from distutils.command.clean import clean as CleanCommand
+import glob
 import hashlib
 import os
 import platform
 import shutil
 import sys
 import tarfile
-import glob
 
-from setuptools import setup, find_packages, Extension
+from pkg_resources import get_build_platform
+from setuptools import Extension
+from setuptools import find_packages
+from setuptools import setup
 from setuptools.command.build_ext import build_ext as BuildExtCommand
 from setuptools.command.build_py import build_py as BuildPyCommand
-from pkg_resources import get_build_platform
-from distutils.command.clean import clean as CleanCommand
+
 
 try:
     # ORDER MATTERS
@@ -382,10 +385,10 @@ setup(
         ],
     },
     classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
