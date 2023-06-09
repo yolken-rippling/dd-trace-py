@@ -3,12 +3,12 @@
 from builtins import str as builtin_str
 import codecs
 
+from ddtrace.appsec.iast._taint_tracking import OriginType
 from ddtrace.appsec.iast._taint_tracking import add_taint_pyobject
 from ddtrace.appsec.iast._taint_tracking import get_tainted_ranges
 from ddtrace.appsec.iast._taint_tracking import is_pyobject_tainted
 from ddtrace.appsec.iast._taint_tracking import set_tainted_ranges
 from ddtrace.appsec.iast._taint_tracking import taint_pyobject
-from ddtrace.appsec.iast._taint_tracking import OriginType
 
 
 def str_aspect(*args, **kwargs):

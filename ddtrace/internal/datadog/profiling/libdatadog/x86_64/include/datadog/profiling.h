@@ -1,24 +1,22 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
-// This product includes software developed at Datadog (https://www.datadoghq.com/). Copyright 2021-Present Datadog,
-// Inc.
+// This product includes software developed at Datadog (https://www.datadoghq.com/). Copyright 2021-Present Datadog, Inc.
 
 #ifndef DDOG_PROFILING_H
 #define DDOG_PROFILING_H
 
 #pragma once
 
-#include "common.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "common.h"
 
 /**
  * Creates an endpoint that uses the agent.
  * # Arguments
  * * `base_url` - Contains a URL with scheme, host, and port e.g. "https://agent:8126/".
  */
-struct ddog_Endpoint
-ddog_Endpoint_agent(ddog_CharSlice base_url);
+struct ddog_Endpoint ddog_Endpoint_agent(ddog_CharSlice base_url);
 
 /**
  * Creates an endpoint that uses the Datadog intake directly aka agentless.
@@ -26,8 +24,7 @@ ddog_Endpoint_agent(ddog_CharSlice base_url);
  * * `site` - Contains a host and port e.g. "datadoghq.com".
  * * `api_key` - Contains the Datadog API key.
  */
-struct ddog_Endpoint
-ddog_Endpoint_agentless(ddog_CharSlice site, ddog_CharSlice api_key);
+struct ddog_Endpoint ddog_Endpoint_agentless(ddog_CharSlice site, ddog_CharSlice api_key);
 
 /**
  * Creates a new exporter to be used to report profiling data.
@@ -44,12 +41,11 @@ ddog_Endpoint_agentless(ddog_CharSlice site, ddog_CharSlice api_key);
  * All pointers must refer to valid objects of the correct types.
  */
 DDOG_CHECK_RETURN
-struct ddog_prof_Exporter_NewResult
-ddog_prof_Exporter_new(ddog_CharSlice profiling_library_name,
-                       ddog_CharSlice profiling_library_version,
-                       ddog_CharSlice family,
-                       const struct ddog_Vec_Tag* tags,
-                       struct ddog_Endpoint endpoint);
+struct ddog_prof_Exporter_NewResult ddog_prof_Exporter_new(ddog_CharSlice profiling_library_name,
+                                                           ddog_CharSlice profiling_library_version,
+                                                           ddog_CharSlice family,
+                                                           const struct ddog_Vec_Tag *tags,
+                                                           struct ddog_Endpoint endpoint);
 
 /**
  * # Safety
@@ -57,8 +53,7 @@ ddog_prof_Exporter_new(ddog_CharSlice profiling_library_name,
  * valid `ddog_prof_Exporter_Request` object made by the Rust Global
  * allocator that has not already been dropped.
  */
-void
-ddog_prof_Exporter_drop(struct ddog_prof_Exporter* exporter);
+void ddog_prof_Exporter_drop(struct ddog_prof_Exporter *exporter);
 
 /**
  * If successful, builds a `ddog_prof_Exporter_Request` object based on the
@@ -69,14 +64,13 @@ ddog_prof_Exporter_drop(struct ddog_prof_Exporter* exporter);
  * valid objects created by this module, except NULL is allowed.
  */
 DDOG_CHECK_RETURN
-struct ddog_prof_Exporter_Request_BuildResult
-ddog_prof_Exporter_Request_build(struct ddog_prof_Exporter* exporter,
-                                 struct ddog_Timespec start,
-                                 struct ddog_Timespec end,
-                                 struct ddog_prof_Exporter_Slice_File files,
-                                 const struct ddog_Vec_Tag* additional_tags,
-                                 const struct ddog_prof_ProfiledEndpointsStats* endpoints_stats,
-                                 uint64_t timeout_ms);
+struct ddog_prof_Exporter_Request_BuildResult ddog_prof_Exporter_Request_build(struct ddog_prof_Exporter *exporter,
+                                                                               struct ddog_Timespec start,
+                                                                               struct ddog_Timespec end,
+                                                                               struct ddog_prof_Exporter_Slice_File files,
+                                                                               const struct ddog_Vec_Tag *additional_tags,
+                                                                               const struct ddog_prof_ProfiledEndpointsStats *endpoints_stats,
+                                                                               uint64_t timeout_ms);
 
 /**
  * # Safety
@@ -84,8 +78,7 @@ ddog_prof_Exporter_Request_build(struct ddog_prof_Exporter* exporter,
  * pointer must point to a valid `ddog_prof_Exporter_Request` object made by
  * the Rust Global allocator.
  */
-void
-ddog_prof_Exporter_Request_drop(struct ddog_prof_Exporter_Request** request);
+void ddog_prof_Exporter_Request_drop(struct ddog_prof_Exporter_Request **request);
 
 /**
  * Sends the request, returning the HttpStatus.
@@ -101,17 +94,15 @@ ddog_prof_Exporter_Request_drop(struct ddog_prof_Exporter_Request** request);
  * All non-null arguments MUST have been created by created by apis in this module.
  */
 DDOG_CHECK_RETURN
-struct ddog_prof_Exporter_SendResult
-ddog_prof_Exporter_send(struct ddog_prof_Exporter* exporter,
-                        struct ddog_prof_Exporter_Request** request,
-                        const struct ddog_CancellationToken* cancel);
+struct ddog_prof_Exporter_SendResult ddog_prof_Exporter_send(struct ddog_prof_Exporter *exporter,
+                                                             struct ddog_prof_Exporter_Request **request,
+                                                             const struct ddog_CancellationToken *cancel);
 
 /**
  * Can be passed as an argument to send and then be used to asynchronously cancel it from a different thread.
  */
 DDOG_CHECK_RETURN
-struct ddog_CancellationToken*
-ddog_CancellationToken_new(void);
+struct ddog_CancellationToken *ddog_CancellationToken_new(void);
 
 /**
  * A cloned CancellationToken is connected to the CancellationToken it was created from.
@@ -140,24 +131,21 @@ ddog_CancellationToken_new(void);
  * If the `token` is non-null, it must point to a valid object.
  */
 DDOG_CHECK_RETURN
-struct ddog_CancellationToken*
-ddog_CancellationToken_clone(const struct ddog_CancellationToken* token);
+struct ddog_CancellationToken *ddog_CancellationToken_clone(const struct ddog_CancellationToken *token);
 
 /**
  * Cancel send that is being called in another thread with the given token.
  * Note that cancellation is a terminal state; cancelling a token more than once does nothing.
  * Returns `true` if token was successfully cancelled.
  */
-bool
-ddog_CancellationToken_cancel(const struct ddog_CancellationToken* cancel);
+bool ddog_CancellationToken_cancel(const struct ddog_CancellationToken *cancel);
 
 /**
  * # Safety
  * The `token` can be null, but non-null values must be created by the Rust
  * Global allocator and must have not been dropped already.
  */
-void
-ddog_CancellationToken_drop(struct ddog_CancellationToken* token);
+void ddog_CancellationToken_drop(struct ddog_CancellationToken *token);
 
 /**
  * Create a new profile with the given sample types. Must call
@@ -174,18 +162,16 @@ ddog_CancellationToken_drop(struct ddog_CancellationToken* token);
  * and must have the correct number of elements for the slice.
  */
 DDOG_CHECK_RETURN
-struct ddog_prof_Profile*
-ddog_prof_Profile_new(struct ddog_prof_Slice_ValueType sample_types,
-                      const struct ddog_prof_Period* period,
-                      const struct ddog_Timespec* start_time);
+struct ddog_prof_Profile *ddog_prof_Profile_new(struct ddog_prof_Slice_ValueType sample_types,
+                                                const struct ddog_prof_Period *period,
+                                                const struct ddog_Timespec *start_time);
 
 /**
  * # Safety
  * The `profile` can be null, but if non-null it must point to a valid object
  * created by the Rust Global allocator.
  */
-void
-ddog_prof_Profile_drop(struct ddog_prof_Profile* profile);
+void ddog_prof_Profile_drop(struct ddog_prof_Profile *profile);
 
 /**
  * # Safety
@@ -202,8 +188,8 @@ ddog_prof_Profile_drop(struct ddog_prof_Profile* profile);
  * This call is _NOT_ thread-safe.
  */
 DDOG_CHECK_RETURN
-struct ddog_prof_Profile_AddResult
-ddog_prof_Profile_add(struct ddog_prof_Profile* profile, struct ddog_prof_Sample sample);
+struct ddog_prof_Profile_AddResult ddog_prof_Profile_add(struct ddog_prof_Profile *profile,
+                                                         struct ddog_prof_Sample sample);
 
 /**
  * Associate an endpoint to a given local root span id.
@@ -223,8 +209,9 @@ ddog_prof_Profile_add(struct ddog_prof_Profile* profile, struct ddog_prof_Sample
  * module.
  * This call is _NOT_ thread-safe.
  */
-void
-ddog_prof_Profile_set_endpoint(struct ddog_prof_Profile* profile, uint64_t local_root_span_id, ddog_CharSlice endpoint);
+void ddog_prof_Profile_set_endpoint(struct ddog_prof_Profile *profile,
+                                    uint64_t local_root_span_id,
+                                    ddog_CharSlice endpoint);
 
 /**
  * Count the number of times an endpoint has been seen.
@@ -238,8 +225,9 @@ ddog_prof_Profile_set_endpoint(struct ddog_prof_Profile* profile, uint64_t local
  * module.
  * This call is _NOT_ thread-safe.
  */
-void
-ddog_prof_Profile_add_endpoint_count(struct ddog_prof_Profile* profile, ddog_CharSlice endpoint, int64_t value);
+void ddog_prof_Profile_add_endpoint_count(struct ddog_prof_Profile *profile,
+                                          ddog_CharSlice endpoint,
+                                          int64_t value);
 
 /**
  * Add a poisson-based upscaling rule which will be use to adjust values and make them
@@ -261,14 +249,13 @@ ddog_prof_Profile_add_endpoint_count(struct ddog_prof_Profile* profile, ddog_Cha
  * This call is _NOT_ thread-safe.
  */
 DDOG_CHECK_RETURN
-struct ddog_prof_Profile_UpscalingRuleAddResult
-ddog_prof_Profile_add_upscaling_rule_poisson(struct ddog_prof_Profile* profile,
-                                             struct ddog_prof_Slice_Usize offset_values,
-                                             ddog_CharSlice label_name,
-                                             ddog_CharSlice label_value,
-                                             uintptr_t sum_value_offset,
-                                             uintptr_t count_value_offset,
-                                             uint64_t sampling_distance);
+struct ddog_prof_Profile_UpscalingRuleAddResult ddog_prof_Profile_add_upscaling_rule_poisson(struct ddog_prof_Profile *profile,
+                                                                                             struct ddog_prof_Slice_Usize offset_values,
+                                                                                             ddog_CharSlice label_name,
+                                                                                             ddog_CharSlice label_value,
+                                                                                             uintptr_t sum_value_offset,
+                                                                                             uintptr_t count_value_offset,
+                                                                                             uint64_t sampling_distance);
 
 /**
  * Add a proportional-based upscaling rule which will be use to adjust values and make them
@@ -289,13 +276,12 @@ ddog_prof_Profile_add_upscaling_rule_poisson(struct ddog_prof_Profile* profile,
  * This call is _NOT_ thread-safe.
  */
 DDOG_CHECK_RETURN
-struct ddog_prof_Profile_UpscalingRuleAddResult
-ddog_prof_Profile_add_upscaling_rule_proportional(struct ddog_prof_Profile* profile,
-                                                  struct ddog_prof_Slice_Usize offset_values,
-                                                  ddog_CharSlice label_name,
-                                                  ddog_CharSlice label_value,
-                                                  uint64_t total_sampled,
-                                                  uint64_t total_real);
+struct ddog_prof_Profile_UpscalingRuleAddResult ddog_prof_Profile_add_upscaling_rule_proportional(struct ddog_prof_Profile *profile,
+                                                                                                  struct ddog_prof_Slice_Usize offset_values,
+                                                                                                  ddog_CharSlice label_name,
+                                                                                                  ddog_CharSlice label_value,
+                                                                                                  uint64_t total_sampled,
+                                                                                                  uint64_t total_real);
 
 /**
  * # Safety
@@ -303,8 +289,7 @@ ddog_prof_Profile_add_upscaling_rule_proportional(struct ddog_prof_Profile* prof
  * valid reference also means that it hasn't already been dropped (do not
  * call this twice on the same object).
  */
-void
-ddog_prof_EncodedProfile_drop(struct ddog_prof_EncodedProfile* profile);
+void ddog_prof_EncodedProfile_drop(struct ddog_prof_EncodedProfile *profile);
 
 /**
  * Serialize the aggregated profile.
@@ -328,13 +313,11 @@ ddog_prof_EncodedProfile_drop(struct ddog_prof_EncodedProfile* profile);
  * The `duration_nanos` must be null or otherwise point to a valid i64.
  */
 DDOG_CHECK_RETURN
-struct ddog_prof_Profile_SerializeResult
-ddog_prof_Profile_serialize(const struct ddog_prof_Profile* profile,
-                            const struct ddog_Timespec* end_time,
-                            const int64_t* duration_nanos);
+struct ddog_prof_Profile_SerializeResult ddog_prof_Profile_serialize(const struct ddog_prof_Profile *profile,
+                                                                     const struct ddog_Timespec *end_time,
+                                                                     const int64_t *duration_nanos);
 
-DDOG_CHECK_RETURN struct ddog_Slice_U8
-ddog_Vec_U8_as_slice(const struct ddog_Vec_U8* vec);
+DDOG_CHECK_RETURN struct ddog_Slice_U8 ddog_Vec_U8_as_slice(const struct ddog_Vec_U8 *vec);
 
 /**
  * Resets all data in `profile` except the sample types and period. Returns
@@ -350,7 +333,7 @@ ddog_Vec_U8_as_slice(const struct ddog_Vec_U8* vec);
  * can be called across an FFI boundary, the compiler cannot enforce this.
  * If `time` is not null, it must point to a valid Timespec object.
  */
-bool
-ddog_prof_Profile_reset(struct ddog_prof_Profile* profile, const struct ddog_Timespec* start_time);
+bool ddog_prof_Profile_reset(struct ddog_prof_Profile *profile,
+                             const struct ddog_Timespec *start_time);
 
 #endif /* DDOG_PROFILING_H */

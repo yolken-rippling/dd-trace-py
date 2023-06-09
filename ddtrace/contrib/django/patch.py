@@ -287,8 +287,8 @@ def traced_func(django, name, resource=None, ignored_excs=None):
 
             # If IAST is enabled and we're wrapping a Django view call, taint the kwargs (view's path parameters)
             if _is_iast_enabled() and args and isinstance(args[0], django.core.handlers.wsgi.WSGIRequest):
-                from ddtrace.appsec.iast._taint_tracking import taint_pyobject
                 from ddtrace.appsec.iast._taint_tracking import OriginType  # noqa: F401
+                from ddtrace.appsec.iast._taint_tracking import taint_pyobject
                 from ddtrace.appsec.iast._taint_utils import LazyTaintDict
 
                 if not isinstance(args[0].COOKIES, LazyTaintDict):

@@ -53,10 +53,10 @@ def test_str_aspect(obj, kwargs):
 def test_str_aspect_tainting(obj, kwargs, should_be_tainted):
     import ddtrace.appsec.iast._ast.aspects as ddtrace_aspects
     from ddtrace.appsec.iast._taint_dict import clear_taint_mapping
+    from ddtrace.appsec.iast._taint_tracking import OriginType
     from ddtrace.appsec.iast._taint_tracking import is_pyobject_tainted
     from ddtrace.appsec.iast._taint_tracking import setup
     from ddtrace.appsec.iast._taint_tracking import taint_pyobject
-    from ddtrace.appsec.iast._taint_tracking import OriginType
 
     setup(bytes.join, bytearray.join)
     clear_taint_mapping()
