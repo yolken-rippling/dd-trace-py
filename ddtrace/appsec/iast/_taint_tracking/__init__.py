@@ -4,24 +4,27 @@ from typing import TYPE_CHECKING
 
 from ddtrace.appsec.iast import oce
 from ddtrace.appsec.iast._taint_dict import get_taint_dict
-from ddtrace.appsec.iast._taint_tracking._native import new_pyobject_id
-from ddtrace.appsec.iast._taint_tracking._native import setup  # noqa: F401
+from ddtrace.appsec.iast._taint_tracking._native import ops
+from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType
+from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import Source
 
 
 if TYPE_CHECKING:
     from typing import Any
     from typing import Dict
     from typing import List
+    from typing import Optional
     from typing import Tuple
     from typing import Union
-    from typing import Optional
 
-from ddtrace.appsec.iast._taint_tracking._native import ops  # noqa: F401
 
 
 setup = ops.setup
 new_pyobject_id = ops.new_pyobject_id
-is_pyobject_tainted = ops.is_tainted
+
+def add_taint_pyobject(pyobject, op1, op2):  # type: (Any, Any, Any) -> Any
+    if not (is_pyobject_tainted(op1) or is_pyobject_tainted(op2)):
+        return pyobject
 
     pyobject = new_pyobject_id(pyobject, len(pyobject))
     taint_dict = get_taint_dict()
@@ -37,7 +40,8 @@ is_pyobject_tainted = ops.is_tainted
     return pyobject
 
 
-def taint_pyobject(pyobject, input_info):  # type: (Any, Input_info) -> Any
+def taint_pyobject(pyobject, source_name=None, source_value=None, source_origin=None, start=0, len_pyobject=None):
+    # type: (Any, str, str, OriginType, int, Optional[int]) -> Any
     # Request is not analyzed
     if not oce.request_has_quota:
         return pyobject
@@ -46,13 +50,18 @@ def taint_pyobject(pyobject, input_info):  # type: (Any, Input_info) -> Any
     if not pyobject or not isinstance(pyobject, (str, bytes, bytearray)):
         return pyobject
 
-    if input_info is None:
-        return pyobject
-
-    len_pyobject = len(pyobject)
+    if len_pyobject is None:
+        len_pyobject = len(pyobject)
     pyobject = new_pyobject_id(pyobject, len_pyobject)
+    if isinstance(source_name, (bytes, bytearray)):
+        source_name = str(source_name, encoding="utf8")
+    if isinstance(source_value, (bytes, bytearray)):
+        source_value = str(source_value, encoding="utf8")
+    if source_origin is None:
+        source_origin = OriginType.PARAMETER
+    source = Source(source_name, source_value, source_origin)
     taint_dict = get_taint_dict()
-    taint_dict[id(pyobject)] = ((input_info, 0, len_pyobject),)
+    taint_dict[id(pyobject)] = ((source, 0, len_pyobject),)
     return pyobject
 
 
