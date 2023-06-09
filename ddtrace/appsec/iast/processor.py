@@ -49,8 +49,8 @@ class AppSecIastSpanProcessor(SpanProcessor):
         data = _context.get_item(IAST.CONTEXT_KEY, span=span)
 
         if data:
-            from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType
-            from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import origin_to_str
+            from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType  # noqa: F401
+            from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import origin_to_str  # noqa: F401
 
             class OriginTypeEncoder(json.JSONEncoder):
                 def default(self, obj):
