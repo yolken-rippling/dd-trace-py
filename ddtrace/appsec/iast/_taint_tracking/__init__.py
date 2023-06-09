@@ -14,13 +14,14 @@ if TYPE_CHECKING:
     from typing import List
     from typing import Tuple
     from typing import Union
+    from typing import Optional
 
-    from ddtrace.appsec.iast._input_info import Input_info
+from ddtrace.appsec.iast._taint_tracking._native import ops  # noqa: F401
 
 
-def add_taint_pyobject(pyobject, op1, op2):  # type: (Any, Any, Any) -> Any
-    if not (is_pyobject_tainted(op1) or is_pyobject_tainted(op2)):
-        return pyobject
+setup = ops.setup
+new_pyobject_id = ops.new_pyobject_id
+is_pyobject_tainted = ops.is_tainted
 
     pyobject = new_pyobject_id(pyobject, len(pyobject))
     taint_dict = get_taint_dict()
