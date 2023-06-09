@@ -288,7 +288,7 @@ def traced_func(django, name, resource=None, ignored_excs=None):
             # If IAST is enabled and we're wrapping a Django view call, taint the kwargs (view's path parameters)
             if _is_iast_enabled() and args and isinstance(args[0], django.core.handlers.wsgi.WSGIRequest):
                 from ddtrace.appsec.iast._taint_tracking import taint_pyobject
-                from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType  # noqa: F401
+                from ddtrace.appsec.iast._taint_tracking import OriginType  # noqa: F401
                 from ddtrace.appsec.iast._taint_utils import LazyTaintDict
 
                 if not isinstance(args[0].COOKIES, LazyTaintDict):
@@ -706,7 +706,7 @@ def _patch(django):
 
     when_imported("django.core.handlers.wsgi")(lambda m: trace_utils.wrap(m, "WSGIRequest.__init__", wrap_wsgi_environ))
 
-    from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType  # noqa: F401
+    from ddtrace.appsec.iast._taint_tracking import OriginType  # noqa: F401
 
     when_imported("django.http.request")(
         lambda m: trace_utils.wrap(
@@ -767,7 +767,7 @@ def wrap_wsgi_environ(wrapped, _instance, args, kwargs):
         if not args:
             return wrapped(*args, **kwargs)
 
-        from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType  # noqa: F401
+        from ddtrace.appsec.iast._taint_tracking import OriginType  # noqa: F401
         from ddtrace.appsec.iast._taint_utils import LazyTaintDict
 
         return wrapped(

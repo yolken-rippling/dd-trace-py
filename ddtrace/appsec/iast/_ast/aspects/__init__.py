@@ -3,18 +3,20 @@
 from builtins import str as builtin_str
 import codecs
 
-from ddtrace.appsec.iast._input_info import Input_info
 from ddtrace.appsec.iast._taint_tracking import add_taint_pyobject
 from ddtrace.appsec.iast._taint_tracking import get_tainted_ranges
 from ddtrace.appsec.iast._taint_tracking import is_pyobject_tainted
 from ddtrace.appsec.iast._taint_tracking import set_tainted_ranges
 from ddtrace.appsec.iast._taint_tracking import taint_pyobject
+from ddtrace.appsec.iast._taint_tracking import OriginType
 
 
 def str_aspect(*args, **kwargs):
     result = builtin_str(*args, **kwargs)
     if isinstance(args[0], (str, bytes, bytearray)) and is_pyobject_tainted(args[0]):
-        result = taint_pyobject(result, Input_info("str_aspect", result, 0))
+        result = taint_pyobject(
+            result, source_name="str_aspect", source_value=result, source_origin=OriginType.PARAMETER
+        )
 
     return result
 
