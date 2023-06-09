@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
-
 from typing import TYPE_CHECKING
 
-from ddtrace.appsec.iast import oce
-from ddtrace.appsec.iast._taint_dict import get_taint_dict
-from ddtrace.appsec.iast._taint_tracking._native import ops  # noqa: F401
-from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType  # noqa: F401
-from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import Source  # noqa: F401
+from ddtrace.internal.logger import get_logger
 
+
+LOGGER = get_logger(__name__)
+
+try:
+    from ddtrace.appsec.iast import oce
+    from ddtrace.appsec.iast._taint_dict import get_taint_dict
+    from ddtrace.appsec.iast._taint_tracking._native import ops  # noqa: F401
+    from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType  # noqa: F401
+    from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import Source  # noqa: F401
+
+    setup = ops.setup
+    new_pyobject_id = ops.new_pyobject_id
+except ImportError:
+    LOGGER.warning("IAST features disabled. WARNING: IAST native module not loaded", exc_info=True)
 
 if TYPE_CHECKING:
     from typing import Any
@@ -16,10 +25,6 @@ if TYPE_CHECKING:
     from typing import Optional
     from typing import Tuple
     from typing import Union
-
-
-setup = ops.setup
-new_pyobject_id = ops.new_pyobject_id
 
 
 def add_taint_pyobject(pyobject, op1, op2):  # type: (Any, Any, Any) -> Any
