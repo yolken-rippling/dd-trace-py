@@ -16,7 +16,6 @@ from ddtrace import Pin
 from ddtrace import config
 from ddtrace.appsec import _asm_request_context
 from ddtrace.appsec import utils as appsec_utils
-from ddtrace.appsec._constants import IAST
 from ddtrace.appsec.iast._patch import if_iast_taint_returned_object_for
 from ddtrace.appsec.iast._util import _is_iast_enabled
 from ddtrace.constants import SPAN_KIND
@@ -288,26 +287,36 @@ def traced_func(django, name, resource=None, ignored_excs=None):
 
             # If IAST is enabled and we're wrapping a Django view call, taint the kwargs (view's path parameters)
             if _is_iast_enabled() and args and isinstance(args[0], django.core.handlers.wsgi.WSGIRequest):
-                from ddtrace.appsec.iast._taint_tracking import Source
                 from ddtrace.appsec.iast._taint_tracking import taint_pyobject
+                from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType
                 from ddtrace.appsec.iast._taint_utils import LazyTaintDict
 
                 if not isinstance(args[0].COOKIES, LazyTaintDict):
                     args[0].COOKIES = LazyTaintDict(
-                        args[0].COOKIES, origins=(IAST.HTTP_REQUEST_COOKIE_NAME, IAST.HTTP_REQUEST_COOKIE_VALUE)
+                        args[0].COOKIES, origins=(OriginType.COOKIE_NAME, OriginType.COOKIE_VALUE)
                     )
-                args[0].path = taint_pyobject(args[0].path, Source("path", args[0].path, IAST.HTTP_REQUEST_PATH))
+                args[0].path = taint_pyobject(
+                    args[0].path, source_name="path", source_value=args[0].path, source_origin=OriginType.REQUEST_PATH
+                )
                 args[0].path_info = taint_pyobject(
-                    args[0].path_info, Source("path", args[0].path, IAST.HTTP_REQUEST_PATH)
+                    args[0].path_info,
+                    source_name="path",
+                    source_value=args[0].path,
+                    source_origin=OriginType.REQUEST_PATH,
                 )
                 args[0].environ["PATH_INFO"] = taint_pyobject(
-                    args[0].environ["PATH_INFO"], Source("path", args[0].path, IAST.HTTP_REQUEST_PATH)
+                    args[0].environ["PATH_INFO"],
+                    source_name="path",
+                    source_value=args[0].path,
+                    source_origin=OriginType.REQUEST_PATH,
                 )
                 if kwargs:
                     try:
 
                         for k, v in kwargs.items():
-                            kwargs[k] = taint_pyobject(v, Source(k, v, IAST.HTTP_REQUEST_PATH_PARAMETER))
+                            kwargs[k] = taint_pyobject(
+                                v, source_name=k, source_value=v, source_origin=OriginType.PATH_PARAMETER
+                            )
                     except Exception:
                         log.debug("IAST: Unexpected exception while tainting path parameters", exc_info=True)
 
@@ -697,11 +706,13 @@ def _patch(django):
 
     when_imported("django.core.handlers.wsgi")(lambda m: trace_utils.wrap(m, "WSGIRequest.__init__", wrap_wsgi_environ))
 
+    from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType
+
     when_imported("django.http.request")(
         lambda m: trace_utils.wrap(
             m,
             "QueryDict.__getitem__",
-            functools.partial(if_iast_taint_returned_object_for, IAST.HTTP_REQUEST_PARAMETER),
+            functools.partial(if_iast_taint_returned_object_for, OriginType.PARAMETER),
         )
     )
 
@@ -756,10 +767,11 @@ def wrap_wsgi_environ(wrapped, _instance, args, kwargs):
         if not args:
             return wrapped(*args, **kwargs)
 
+        from ddtrace.appsec.iast._taint_tracking._native.taint_tracking import OriginType
         from ddtrace.appsec.iast._taint_utils import LazyTaintDict
 
         return wrapped(
-            *((LazyTaintDict(args[0], origins=(IAST.HTTP_REQUEST_HEADER_NAME, IAST.HTTP_REQUEST_HEADER)),) + args[1:]),
+            *((LazyTaintDict(args[0], origins=(OriginType._HEADER_NAME, OriginType.REQUEST_HEADER)),) + args[1:]),
             **kwargs
         )
 

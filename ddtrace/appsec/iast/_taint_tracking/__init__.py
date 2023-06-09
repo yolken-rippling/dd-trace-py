@@ -18,9 +18,9 @@ if TYPE_CHECKING:
     from typing import Union
 
 
-
 setup = ops.setup
 new_pyobject_id = ops.new_pyobject_id
+
 
 def add_taint_pyobject(pyobject, op1, op2):  # type: (Any, Any, Any) -> Any
     if not (is_pyobject_tainted(op1) or is_pyobject_tainted(op2)):
@@ -40,8 +40,8 @@ def add_taint_pyobject(pyobject, op1, op2):  # type: (Any, Any, Any) -> Any
     return pyobject
 
 
-def taint_pyobject(pyobject, source_name=None, source_value=None, source_origin=None, start=0, len_pyobject=None):
-    # type: (Any, str, str, OriginType, int, Optional[int]) -> Any
+def taint_pyobject(pyobject, source_name=None, source_value=None, source_origin=None, start=0, len_pyobject=0):
+    # type: (Any, Optional[str], Optional[str], Optional[OriginType], int, int) -> Any
     # Request is not analyzed
     if not oce.request_has_quota:
         return pyobject
@@ -61,7 +61,7 @@ def taint_pyobject(pyobject, source_name=None, source_value=None, source_origin=
         source_origin = OriginType.PARAMETER
     source = Source(source_name, source_value, source_origin)
     taint_dict = get_taint_dict()
-    taint_dict[id(pyobject)] = ((source, 0, len_pyobject),)
+    taint_dict[id(pyobject)] = ((source, start, len_pyobject),)
     return pyobject
 
 
@@ -79,7 +79,7 @@ def get_tainted_ranges(pyobject):  # type: (Any) -> tuple
     return get_taint_dict().get(id(pyobject), tuple())
 
 
-def taint_ranges_as_evidence_info(pyobject):  # type: (Any) -> Tuple[List[Dict[str, Union[Any, int]]], list[Input_info]]
+def taint_ranges_as_evidence_info(pyobject):  # type: (Any) -> Tuple[List[Dict[str, Union[Any, int]]], list[Source]]
     value_parts = []
     sources = []
     current_pos = 0
