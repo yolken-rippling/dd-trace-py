@@ -4,20 +4,13 @@ import platform
 import shutil
 import sys
 import tarfile
-import glob
-import os
-import re
-import subprocess
-import sys
-from pathlib import Path
 
-from setuptools import Extension, setup
-from setuptools.command.build_ext import build_ext
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext as BuildExtCommand
 from setuptools.command.build_py import build_py as BuildPyCommand
 from pkg_resources import get_build_platform
 from distutils.command.clean import clean as CleanCommand
+
 
 try:
     # ORDER MATTERS
@@ -31,14 +24,6 @@ except ImportError:
         "version >=18.\nSee the quickstart documentation for more information:\n"
         "https://ddtrace.readthedocs.io/en/stable/installation_quickstart.html"
     )
-
-try:
-    # ORDER MATTERS
-    # Import this after setuptools or it will fail
-    from pybind11.setup_helpers import Pybind11Extension
-except ImportError:
-    raise ImportError("Failed to import pybind11 modules")
-
 
 if sys.version_info >= (3, 0):
     from urllib.error import HTTPError
@@ -240,42 +225,43 @@ class LibDDWafDownload(LibraryDownload):
 class IastCompile(LibraryDownload):
     @classmethod
     def download_artifacts(cls):
-        import shutil
-        import subprocess
-        import tempfile
+        if sys.version_info >= (3, 6, 0):
+            import shutil
+            import subprocess
+            import tempfile
 
-        to_build = set()
-        # Detect if any source file sits next to a CMakeLists.txt file
-        if os.path.exists(os.path.join(IAST_DIR, "CMakeLists.txt")):
-            to_build.add(IAST_DIR)
+            to_build = set()
+            # Detect if any source file sits next to a CMakeLists.txt file
+            if os.path.exists(os.path.join(IAST_DIR, "CMakeLists.txt")):
+                to_build.add(IAST_DIR)
 
-        if not to_build:
-            # Build the extension as usual
-            return
+            if not to_build:
+                # Build the extension as usual
+                return
 
-        try:
-            cmake_command = os.environ.get("CMAKE_COMMAND", "cmake")
-            build_type = "RelWithDebInfo" if DEBUG_COMPILE else "Release"
-            opts = ["-DCMAKE_BUILD_TYPE={}".format(build_type)]
-            if platform.system() == "Windows":
-                opts.extend(["-A", "x64" if platform.architecture()[0] == "64bit" else "Win32"])
-            else:
-                opts.extend(["-G", "Ninja"])
-                ninja_command = os.environ.get("NINJA_COMMAND", "")
-                if ninja_command:
-                    opts.append("-DCMAKE_MAKE_PROGRAM={}".format(ninja_command))
+            try:
+                cmake_command = os.environ.get("CMAKE_COMMAND", "cmake")
+                build_type = "RelWithDebInfo" if DEBUG_COMPILE else "Release"
+                opts = ["-DCMAKE_BUILD_TYPE={}".format(build_type)]
+                if platform.system() == "Windows":
+                    opts.extend(["-A", "x64" if platform.architecture()[0] == "64bit" else "Win32"])
+                else:
+                    opts.extend(["-G", "Ninja"])
+                    ninja_command = os.environ.get("NINJA_COMMAND", "")
+                    if ninja_command:
+                        opts.append("-DCMAKE_MAKE_PROGRAM={}".format(ninja_command))
 
-            for source_dir in to_build:
-                try:
-                    build_dir = tempfile.mkdtemp()
-                    subprocess.check_call([cmake_command, "-S", source_dir, "-B", build_dir] + opts)
-                    subprocess.check_call([cmake_command, "--build", build_dir, "--config", build_type])
-                finally:
-                    if not DEBUG_COMPILE:
-                        shutil.rmtree(build_dir, ignore_errors=True)
-        except Exception as e:
-            print('WARNING: building extension "%s" failed: %s' % (IAST_DIR, e))
-            raise
+                for source_dir in to_build:
+                    try:
+                        build_dir = tempfile.mkdtemp()
+                        subprocess.check_call([cmake_command, "-S", source_dir, "-B", build_dir] + opts)
+                        subprocess.check_call([cmake_command, "--build", build_dir, "--config", build_type])
+                    finally:
+                        if not DEBUG_COMPILE:
+                            shutil.rmtree(build_dir, ignore_errors=True)
+            except Exception as e:
+                print('WARNING: building extension "%s" failed: %s' % (IAST_DIR, e))
+                raise
 
 
 class LibDatadogDownload(LibraryDownload):
@@ -434,20 +420,6 @@ if sys.version_info[:2] >= (3, 4) and not IS_PYSTON:
                 extra_compile_args=debug_compile_args,
             )
         )
-        if sys.version_info >= (3, 6, 0):
-            ext_modules.append(
-                Extension(
-                    "ddtrace.appsec.iast._taint_tracking._native",
-                    # Sort source files for reproducibility
-                    sources=sorted(
-                        glob.glob(
-                            os.path.join("ddtrace", "appsec", "iast", "_taint_tracking", "**", "*.cpp"),
-                            recursive=True,
-                        )
-                    ),
-                    extra_compile_args=debug_compile_args + ["-std=c++17"],
-                )
-            )
 else:
     ext_modules = []
 
