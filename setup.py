@@ -245,11 +245,11 @@ class IastCompile(LibraryDownload):
                 opts = ["-DCMAKE_BUILD_TYPE={}".format(build_type)]
                 if platform.system() == "Windows":
                     opts.extend(["-A", "x64" if platform.architecture()[0] == "64bit" else "Win32"])
-                else:
-                    opts.extend(["-G", "Ninja"])
-                    ninja_command = os.environ.get("NINJA_COMMAND", "")
-                    if ninja_command:
-                        opts.append("-DCMAKE_MAKE_PROGRAM={}".format(ninja_command))
+                # else:
+                #     opts.extend(["-G", "Ninja"])
+                #     ninja_command = os.environ.get("NINJA_COMMAND", "")
+                #     if ninja_command:
+                #         opts.append("-DCMAKE_MAKE_PROGRAM={}".format(ninja_command))
 
                 for source_dir in to_build:
                     try:
