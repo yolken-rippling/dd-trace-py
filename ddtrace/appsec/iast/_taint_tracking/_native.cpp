@@ -1,26 +1,24 @@
-#include "TaintedObject/TaintedObject.h"
+#include <memory>
+#include <pybind11/pybind11.h>
 
-static PyMethodDef TaintTrackingMethods[] = {
-    // We are using  METH_VARARGS because we need compatibility with
-    // python 3.5, 3.6. but METH_FASTCALL could be used instead for python
-    // >= 3.7
-    { "setup", (PyCFunction)setup, METH_VARARGS, "setup tainting module" },
-    { "new_pyobject_id", (PyCFunction)new_pyobject_id, METH_VARARGS, "new_pyobject_id" },
-    { NULL, NULL, 0, NULL }
-};
+#include "TaintTracking/Source.h"
+#include "TaintTracking/TaintedObject.h"
+#include "TaintTracking/_taint_tracking.h"
 
-static struct PyModuleDef taint_tracking = { PyModuleDef_HEAD_INIT,
-                                             "ddtrace.appsec.iast._taint_tracking._native",
-                                             "taint tracking module",
-                                             -1,
-                                             TaintTrackingMethods };
+#define PY_MODULE_NAME_ASPECTS                                                                                         \
+    PY_MODULE_NAME "."                                                                                                 \
+                   "aspects"
 
-PyMODINIT_FUNC
-PyInit__native(void)
+using namespace pybind11::literals;
+namespace py = pybind11;
+
+
+PYBIND11_MODULE(_native, m)
 {
-    PyObject* m;
-    m = PyModule_Create(&taint_tracking);
-    if (m == NULL)
-        return NULL;
-    return m;
+    pyexport_m_taint_tracking(m);
+
+
+    // Note: the order of these definitions matter. For example,
+    // stacktrace_element definitions must be before the ones of the
+    // classes inheriting from it.
 }
