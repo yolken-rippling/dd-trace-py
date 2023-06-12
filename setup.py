@@ -290,9 +290,9 @@ class CleanLibraries(CleanCommand):
 
 
 class BuildExtCommand(build_ext):
-    def run(self, *args, **kwargs):
+    def run(self):
         self.install_iast()
-        super(BuildExtCommand, self).run(self)
+        build_ext.run(self)
 
     @staticmethod
     def install_iast():
