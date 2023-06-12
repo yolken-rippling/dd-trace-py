@@ -293,22 +293,22 @@ def traced_func(django, name, resource=None, ignored_excs=None):
 
                 if not isinstance(args[0].COOKIES, LazyTaintDict):
                     args[0].COOKIES = LazyTaintDict(
-                        args[0].COOKIES, origins=(OriginType.COOKIE_NAME, OriginType.COOKIE_VALUE)
+                        args[0].COOKIES, origins=(OriginType.COOKIE_NAME, OriginType.COOKIE)
                     )
                 args[0].path = taint_pyobject(
-                    args[0].path, source_name="path", source_value=args[0].path, source_origin=OriginType.REQUEST_PATH
+                    args[0].path, source_name="path", source_value=args[0].path, source_origin=OriginType.PATH
                 )
                 args[0].path_info = taint_pyobject(
                     args[0].path_info,
                     source_name="path",
                     source_value=args[0].path,
-                    source_origin=OriginType.REQUEST_PATH,
+                    source_origin=OriginType.PATH,
                 )
                 args[0].environ["PATH_INFO"] = taint_pyobject(
                     args[0].environ["PATH_INFO"],
                     source_name="path",
                     source_value=args[0].path,
-                    source_origin=OriginType.REQUEST_PATH,
+                    source_origin=OriginType.PATH,
                 )
                 if kwargs:
                     try:

@@ -4,7 +4,12 @@ import sys
 
 import pytest
 
+from ddtrace.appsec.iast import oce
 from ddtrace.appsec.iast._taint_tracking import OriginType
+
+
+def setup():
+    oce._enabled = True
 
 
 @pytest.mark.parametrize(
