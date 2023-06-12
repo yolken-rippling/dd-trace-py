@@ -53,7 +53,9 @@ class TestTracedCursor(TracerTestCase):
             oce._enabled = True
             query = "SELECT ? FROM db;"
             query_arg = "something"
-            query_arg = taint_pyobject(query_arg, source_name="query_arg", source_value=query_arg, source_origin=OriginType.PARAMETER)
+            query_arg = taint_pyobject(
+                query_arg, source_name="query_arg", source_value=query_arg, source_origin=OriginType.PARAMETER
+            )
 
             cursor = self.cursor
             cfg = IntegrationConfig(Config(), "sqlite", service="dbapi_service")

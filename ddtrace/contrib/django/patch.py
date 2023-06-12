@@ -771,8 +771,7 @@ def wrap_wsgi_environ(wrapped, _instance, args, kwargs):
         from ddtrace.appsec.iast._taint_utils import LazyTaintDict
 
         return wrapped(
-            *((LazyTaintDict(args[0], origins=(OriginType.HEADER_NAME, OriginType.HEADER)),) + args[1:]),
-            **kwargs
+            *((LazyTaintDict(args[0], origins=(OriginType.HEADER_NAME, OriginType.HEADER)),) + args[1:]), **kwargs
         )
 
     return wrapped(*args, **kwargs)
