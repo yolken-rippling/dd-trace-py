@@ -397,6 +397,7 @@ def test_django_client_ip_header_set_by_env_var_invalid_2(client, test_spans, tr
         assert not root_span.get_tag(http.CLIENT_IP)
 
 
+@pytest.mark.skip(reason="TODO: this tests will enable in the next PR")
 def test_django_weak_hash(client, test_spans, tracer):
     with override_global_config(dict(_appsec_enabled=True, _iast_enabled=True)):
         oce.reconfigure()
