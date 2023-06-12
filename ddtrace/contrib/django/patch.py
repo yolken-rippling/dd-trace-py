@@ -705,16 +705,16 @@ def _patch(django):
         )
 
     when_imported("django.core.handlers.wsgi")(lambda m: trace_utils.wrap(m, "WSGIRequest.__init__", wrap_wsgi_environ))
+    if _is_iast_enabled():
+        from ddtrace.appsec.iast._taint_tracking import OriginType  # noqa: F401
 
-    from ddtrace.appsec.iast._taint_tracking import OriginType  # noqa: F401
-
-    when_imported("django.http.request")(
-        lambda m: trace_utils.wrap(
-            m,
-            "QueryDict.__getitem__",
-            functools.partial(if_iast_taint_returned_object_for, OriginType.PARAMETER),
+        when_imported("django.http.request")(
+            lambda m: trace_utils.wrap(
+                m,
+                "QueryDict.__getitem__",
+                functools.partial(if_iast_taint_returned_object_for, OriginType.PARAMETER),
+            )
         )
-    )
 
     @when_imported("django.core.handlers.base")
     def _(m):
@@ -771,7 +771,7 @@ def wrap_wsgi_environ(wrapped, _instance, args, kwargs):
         from ddtrace.appsec.iast._taint_utils import LazyTaintDict
 
         return wrapped(
-            *((LazyTaintDict(args[0], origins=(OriginType._HEADER_NAME, OriginType.REQUEST_HEADER)),) + args[1:]),
+            *((LazyTaintDict(args[0], origins=(OriginType.HEADER_NAME, OriginType.HEADER)),) + args[1:]),
             **kwargs
         )
 

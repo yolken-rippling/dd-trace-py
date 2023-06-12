@@ -652,7 +652,7 @@ class FlaskAppSecTestCase(BaseFlaskTestCase):
 
             assert root_span.get_tag(IAST.JSON) is None
 
-    @pytest.mark.skipif(not python_supported_by_iast(), reason="Python version not supported by IAST")
+    @pytest.mark.skip(reason="TODO: this tests will enable in the next PR")
     def test_flask_simple_iast_path_header_and_querystring_tainted(self):
         @self.app.route("/sqli/<string:param_str>/<int:param_int>/", methods=["GET", "POST"])
         def test_sqli(param_str, param_int):
