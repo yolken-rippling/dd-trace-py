@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
-import sys
-
 import pytest
 
 from ddtrace.appsec.iast import oce
