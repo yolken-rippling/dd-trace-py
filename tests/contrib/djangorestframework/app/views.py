@@ -86,6 +86,15 @@ class IASTViewSet(viewsets.ViewSet):
             pass
         return Response({"received sqli data": request.data}, status=200)
 
+    @csrf_exempt
+    @action(methods=["post"], detail=False, url_path="sqli_complex_payload", url_name="iast_sqli_complex_payload")
+    def iast_sqli_complex_payload(self, request):
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(request.data["query"]["data1"]["data2"]["data3"]["data4"])
+        except Exception:
+            pass
+        return Response({"received sqli data": request.data}, status=200)
 
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
