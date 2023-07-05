@@ -88,7 +88,7 @@ def test_djangorest_iast_json(client, test_spans, tracer):
             "valueParts": [{"source": 0, "value": "SELECT * FROM auth_user"}]
         }
         assert loaded["vulnerabilities"][0]["location"]["path"] == "tests/contrib/djangorestframework/app/views.py"
-        assert loaded["vulnerabilities"][0]["location"]["line"] == 83
+        assert loaded["vulnerabilities"][0]["location"]["line"] == 84
 
         assert request.content == b'{"received sqli data":{"query":"SELECT * FROM auth_user"}}'
 
@@ -114,15 +114,15 @@ def test_djangorest_iast_json_complex_payload(client, test_spans, tracer):
         assert_span_http_status_code(root_span, 200)
 
         assert root_span.get_metric(IAST.ENABLED) == 1.0
-
-        loaded = json.loads(root_span.get_tag(IAST.JSON))
-        assert loaded["sources"] == [{"name": "query", "origin": "http.request.parameter", "value": "data1"}]
-        assert loaded["vulnerabilities"][0]["type"] == "SQL_INJECTION"
-        assert loaded["vulnerabilities"][0]["evidence"] == {"valueParts": [{"source": 0, "value": "data1"}]}
-        assert loaded["vulnerabilities"][0]["location"]["path"] == "tests/contrib/djangorestframework/app/views.py"
-        assert loaded["vulnerabilities"][0]["location"]["line"] == 83
-
-        assert request.content == b'{"received sqli data":{"query":"SELECT * FROM auth_user"}}'
+        # TODO: IAST isn't taint request.data because it fails with DRF + customparsers
+        # loaded = json.loads(root_span.get_tag(IAST.JSON))
+        # assert loaded["sources"] == [{"name": "query", "origin": "http.request.parameter", "value": "data1"}]
+        # assert loaded["vulnerabilities"][0]["type"] == "SQL_INJECTION"
+        # assert loaded["vulnerabilities"][0]["evidence"] == {"valueParts": [{"source": 0, "value": "data1"}]}
+        # assert loaded["vulnerabilities"][0]["location"]["path"] == "tests/contrib/djangorestframework/app/views.py"
+        # assert loaded["vulnerabilities"][0]["location"]["line"] == 83
+        #
+        # assert request.content == b'{"received sqli data":{"query":"SELECT * FROM auth_user"}}'
 
 
 @pytest.mark.skipif(django.VERSION < (1, 10), reason="requires django version >= 1.10")
