@@ -108,8 +108,7 @@ def test_djangorest_iast_json_complex_payload(client, test_spans, tracer):
         setup(bytes.join, bytearray.join)
 
         payload = {"query": {"data1": {"data2": {"data3": {"data4": "SELECT * FROM auth_user"}}}}}
-        request = client.post("/iast/sqli_complex_payload/", json.dumps(payload),
-                                content_type="application/json")
+        request = client.post("/iast/sqli_complex_payload/", json.dumps(payload), content_type="application/json")
 
         root_span = test_spans.get_root_span()
         assert_span_http_status_code(root_span, 200)
@@ -117,9 +116,9 @@ def test_djangorest_iast_json_complex_payload(client, test_spans, tracer):
         assert root_span.get_metric(IAST.ENABLED) == 1.0
 
         loaded = json.loads(root_span.get_tag(IAST.JSON))
-        assert loaded["sources"] == [{'name': 'query', 'origin': 'http.request.parameter', 'value': 'data1'}]
+        assert loaded["sources"] == [{"name": "query", "origin": "http.request.parameter", "value": "data1"}]
         assert loaded["vulnerabilities"][0]["type"] == "SQL_INJECTION"
-        assert loaded["vulnerabilities"][0]["evidence"] == {'valueParts': [{'source': 0, 'value': 'data1'}]}
+        assert loaded["vulnerabilities"][0]["evidence"] == {"valueParts": [{"source": 0, "value": "data1"}]}
         assert loaded["vulnerabilities"][0]["location"]["path"] == "tests/contrib/djangorestframework/app/views.py"
         assert loaded["vulnerabilities"][0]["location"]["line"] == 83
 

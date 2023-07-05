@@ -96,6 +96,7 @@ class IASTViewSet(viewsets.ViewSet):
             pass
         return Response({"received sqli data": request.data}, status=200)
 
+
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
 router = routers.DefaultRouter()
