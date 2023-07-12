@@ -153,9 +153,7 @@ def test_message(producer, consumer, tombstone, kafka_topic):
     else:
         producer.produce(kafka_topic, PAYLOAD, key=KEY)
     producer.flush()
-    message = None
-    while message is None:
-        message = consumer.poll(1.0)
+    assert consumer.poll(30) is not None
 
 
 @pytest.mark.snapshot(
@@ -165,9 +163,7 @@ def test_service_override_config(producer, consumer, kafka_topic):
     with override_config("kafka", dict(service="my-custom-service-name")):
         producer.produce(kafka_topic, PAYLOAD, key=KEY)
         producer.flush()
-        message = None
-        while message is None:
-            message = consumer.poll(1.0)
+        assert consumer.poll(30) is not None
 
 
 @pytest.mark.snapshot(ignores=["metrics.kafka.message_offset"])
@@ -175,9 +171,7 @@ def test_analytics_with_rate(producer, consumer, kafka_topic):
     with override_config("kafka", dict(analytics_enabled=True, analytics_sample_rate=0.5)):
         producer.produce(kafka_topic, PAYLOAD, key=KEY)
         producer.flush()
-        message = None
-        while message is None:
-            message = consumer.poll(1.0)
+        assert consumer.poll(30) is not None
 
 
 @pytest.mark.snapshot(ignores=["metrics.kafka.message_offset"])
@@ -185,9 +179,7 @@ def test_analytics_without_rate(producer, consumer, kafka_topic):
     with override_config("kafka", dict(analytics_enabled=True)):
         producer.produce(kafka_topic, PAYLOAD, key=KEY)
         producer.flush()
-        message = None
-        while message is None:
-            message = consumer.poll(1.0)
+        assert consumer.poll(30) is not None
 
 
 def retry_until_not_none(factory):
