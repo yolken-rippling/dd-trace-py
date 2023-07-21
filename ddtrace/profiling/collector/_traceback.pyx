@@ -1,5 +1,6 @@
 from types import CodeType
 from types import FrameType
+from ddtrace.profiling.collector import _safe_311_apis
 
 from ddtrace.internal.logger import get_logger
 
@@ -13,8 +14,9 @@ cpdef _extract_class_name(frame):
 
     :param frame: The frame object.
     """
-    if frame.f_code.co_varnames:
-        argname = frame.f_code.co_varnames[0]
+    code = _safe_311_apis.get_code(frame)
+    if code.co_varnames:
+        argname = code.co_varnames[0]
         try:
             value = frame.f_locals[argname]
         except KeyError:
@@ -42,7 +44,7 @@ cpdef traceback_to_frames(traceback, max_nframes):
     while tb is not None:
         if nframes < max_nframes:
             frame = tb.tb_frame
-            code = frame.f_code
+            code = _safe_311_apis.get_code(frame)
             lineno = 0 if frame.f_lineno is None else frame.f_lineno
             frames.insert(0, (code.co_filename, lineno, code.co_name, _extract_class_name(frame)))
         nframes += 1
@@ -79,7 +81,7 @@ cpdef pyframe_to_frames(frame, max_nframes):
                 return [], 0
         
         if nframes < max_nframes:
-            code = frame.f_code
+            code = _safe_311_apis.get_code(frame)
             IF PY_MAJOR_VERSION > 3 or (PY_MAJOR_VERSION == 3 and PY_MINOR_VERSION >= 11):
                 if not isinstance(code, CodeType):
                     log.warning(
@@ -90,5 +92,5 @@ cpdef pyframe_to_frames(frame, max_nframes):
             lineno = 0 if frame.f_lineno is None else frame.f_lineno
             frames.append((code.co_filename, lineno, code.co_name, _extract_class_name(frame)))
         nframes += 1
-        frame = frame.f_back
+        frame = _safe_311_apis.get_back(frame)
     return frames, nframes

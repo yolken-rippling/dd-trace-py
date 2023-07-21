@@ -12,6 +12,7 @@ from ddtrace.internal import compat
 from ddtrace.profiling import _threading
 from ddtrace.profiling import collector
 from ddtrace.profiling import event
+from ddtrace.profiling.collector import _safe_311_apis
 from ddtrace.profiling.collector import _task
 from ddtrace.profiling.collector import _traceback
 from ddtrace.settings.profiling import config
@@ -73,7 +74,7 @@ class _ProfiledLock(wrapt.ObjectProxy):
         self._self_capture_sampler = capture_sampler
         self._self_endpoint_collection_enabled = endpoint_collection_enabled
         frame = sys._getframe(2 if WRAPT_C_EXT else 3)
-        code = frame.f_code
+        code = _safe_311_apis.get_code(frame);
         self._self_name = "%s:%d" % (os.path.basename(code.co_filename), frame.f_lineno)
 
     def __aenter__(self):

@@ -441,6 +441,17 @@ if sys.version_info[:2] >= (3, 4) and not IS_PYSTON:
             ],
             extra_compile_args=debug_compile_args,
         ),
+        Extension(
+            "ddtrace.profiling.collector._safe_311_apis",
+            sources=[
+                "ddtrace/profiling/collector/_safe_311_apis.c"
+            ],
+            include_dirs=[
+                "/app/cpython/Include",
+                "/app/cpython/Include/internal"
+            ],
+            extra_compile_args=debug_compile_args + ["-ggdb3", "-g3", "-DPy_BUILD_CORE", "-std=c11"],
+        ),
     ]
     if platform.system() not in ("Windows", ""):
         ext_modules.append(
