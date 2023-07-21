@@ -152,10 +152,20 @@ Safe_GetCode(PyFrameObject *frame)
   return (PyCodeObject*)Py_NewRef(code);
 }
 
+PyObject *
+get_code(PyObject *self, PyObject *frame) {
+  (void)self;
+  PyObject *code = (PyObject *)Safe_GetCode((PyFrameObject *)frame);
+  if (!code)
+    Py_RETURN_NONE;
+  return code;
+}
+
 
 /******************************** Registration ********************************/
 static PyMethodDef methods[] = {
   { "get_back", (PyCFunction)get_back, METH_O, "gets the f_back"},
+  { "get_code", (PyCFunction)get_code, METH_O, "gets the f_code"},
   {NULL, NULL, 0, NULL}, // Sentinel
 };
 
