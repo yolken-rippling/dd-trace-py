@@ -13,12 +13,12 @@
     if (!(ptr)) { \
         ++(i); \
         if ((i) == MAX_LOG_ERRORS) { \
-            printf("%lu errors reached, %s: Logging will stop.\n", MAX_LOG_ERRORS, (str)); \
+            printf("[%d] %lu errors reached, %s: Logging will stop.\n", getpid(), MAX_LOG_ERRORS, (str)); \
             fflush(stdout); \
-        } else if ((i) > 100) { \
+        } else if ((i) > MAX_LOG_ERRORS) { \
             return (ret); \
         } else { \
-            printf("%s: %lu\n", (str), (i)); \
+            printf("[%d] %s: %lu\n", getpid(), (str), (i)); \
             fflush(stdout); \
             return (ret); \
         } \
