@@ -8,11 +8,12 @@
 
 
 #include <stdio.h>
+#define MAX_LOG_ERRORS 100lu
 #define LOG_COUNT(i, ptr, str, ret) do { \
     if (!(ptr)) { \
         ++(i); \
-        if ((i) == 100) { \
-            printf("%s: Logging will stop.\n", (str)); \
+        if ((i) == MAX_LOG_ERRORS) { \
+            printf("%lu errors reached, %s: Logging will stop.\n", MAX_LOG_ERRORS, (str)); \
             fflush(stdout); \
         } else if ((i) > 100) { \
             return (ret); \
@@ -107,7 +108,7 @@ PyFrameObject *
 Safe_GetBack(PyFrameObject *frame)
 {
   static size_t badframe_count = 0;
-  static size_t incframe_count = 0;
+//  static size_t incframe_count = 0;
   static size_t badframe_prev_count = 0;
   LOG_COUNT(badframe_count, frame, "[B0]F", NULL);
 
