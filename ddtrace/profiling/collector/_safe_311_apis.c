@@ -10,6 +10,7 @@
 #include <stdio.h>
 #define LOG_COUNT(i, ptr, str, ret) do { \
     if (!(ptr)) { \
+        ++(i); \
         if ((i) == 100) { \
             printf("%s: Logging will stop.\n", (str)); \
             fflush(stdout); \
@@ -18,7 +19,6 @@
         } else { \
             printf("%s: %lu\n", (str), (i)); \
             fflush(stdout); \
-            ++(i); \
             return (ret); \
         } \
     } \
@@ -111,7 +111,7 @@ Safe_GetBack(PyFrameObject *frame)
   static size_t badframe_prev_count = 0;
   LOG_COUNT(badframe_count, frame, "[B0]F", NULL);
 
-  LOG_COUNT(incframe_count, _PyFrame_IsIncomplete(frame->f_frame), "[B0]I", NULL);
+//  LOG_COUNT(incframe_count, _PyFrame_IsIncomplete(frame->f_frame), "[B0]I", NULL);
 
   PyFrameObject *back = frame->f_back;
   if (back == NULL) {
