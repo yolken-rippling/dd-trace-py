@@ -138,6 +138,8 @@ def gunicorn_server(gunicorn_server_settings, tmp_path):
             print("Server started")
         except RetryError:
             raise TimeoutError("Server failed to start, see stdout and stderr logs")
+
+        print("Waiting {} seconds for RCM to start".format(SERVICE_INTERVAL))
         time.sleep(SERVICE_INTERVAL)
         yield server_process, client
         try:
@@ -145,8 +147,13 @@ def gunicorn_server(gunicorn_server_settings, tmp_path):
         except Exception:
             pass
     finally:
+        print("Shutting down server")
         server_process.terminate()
-        server_process.wait()
+        try:
+            server_process.wait(timeout=2)
+        except Exception:
+            print("Server failed to stop in 2 seconds, killing")
+            server_process.kill()
 
 
 SETTINGS_GEVENT_DDTRACERUN_MODULE_CLONE = _gunicorn_settings_factory(worker_class="gevent", enable_module_cloning=True)
@@ -177,39 +184,43 @@ SETTINGS_GEVENT_SPANAGGREGATOR_RLOCK = _gunicorn_settings_factory(
 
 
 @pytest.mark.skipif(sys.version_info >= (3, 11), reason="Gunicorn is only supported up to 3.10")
-def test_no_known_errors_occur(tmp_path):
-    for gunicorn_server_settings in [
+@pytest.mark.parametrize(
+    "gunicorn_server_settings",
+    [
         SETTINGS_GEVENT_APPIMPORT,
         SETTINGS_GEVENT_POSTWORKERIMPORT,
         SETTINGS_GEVENT_DDTRACERUN,
         SETTINGS_GEVENT_DDTRACERUN_MODULE_CLONE,
         SETTINGS_GEVENT_DDTRACERUN_DEBUGMODE_MODULE_CLONE,
         SETTINGS_GEVENT_SPANAGGREGATOR_RLOCK,
-    ]:
-        with gunicorn_server(gunicorn_server_settings, tmp_path) as context:
-            _, client = context
-            response = client.get("/")
+    ],
+)
+def test_no_known_errors_occur(gunicorn_server_settings, tmp_path):
+    with gunicorn_server(gunicorn_server_settings, tmp_path) as context:
+        _, client = context
+        response = client.get("/")
+
         assert response.status_code == 200
         payload = parse_payload(response.content)
         assert payload["profiler"]["is_active"] is True
 
 
 @pytest.mark.skipif(sys.version_info >= (3, 11), reason="Gunicorn is only supported up to 3.10")
-def test_span_schematization(tmp_path):
-    for schema_version in [None, "v0", "v1"]:
-        for service_name in [None, "mysvc"]:
-            gunicorn_settings = _gunicorn_settings_factory(
-                worker_class="gevent",
-                dd_service=service_name,
-                schema_version=schema_version,
-            )
-            with snapshot_context(
-                token="tests.contrib.gunicorn.test_gunicorn.test_span_schematization[{}-{}]".format(
-                    service_name, schema_version
-                ),
-                ignores=["meta.result_class"],
-            ):
-                with gunicorn_server(gunicorn_settings, tmp_path) as context:
-                    _, client = context
-                    response = client.get("/")
-                assert response.status_code == 200
+@pytest.mark.parametrize("schema_version", [None, "v0", "v1"])
+@pytest.mark.parametrize("service_name", [None, "mysvc"])
+def test_span_schematization(schema_version, service_name, tmp_path):
+    gunicorn_settings = _gunicorn_settings_factory(
+        worker_class="gevent",
+        dd_service=service_name,
+        schema_version=schema_version,
+    )
+    with snapshot_context(
+        token="tests.contrib.gunicorn.test_gunicorn.test_span_schematization[{}-{}]".format(
+            service_name, schema_version
+        ),
+        ignores=["meta.result_class"],
+    ):
+        with gunicorn_server(gunicorn_settings, tmp_path) as context:
+            _, client = context
+            response = client.get("/")
+            assert response.status_code == 200
