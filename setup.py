@@ -571,6 +571,7 @@ setup(
         "envier",
         "pep562; python_version<'3.7'",
         "opentelemetry-api>=1; python_version>='3.7'",
+        "openfeature-sdk",
     ]
     + bytecode,
     extras_require={
