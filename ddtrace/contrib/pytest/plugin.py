@@ -29,6 +29,7 @@ from ddtrace.contrib.pytest.constants import XFAIL_REASON
 from ddtrace.ext import SpanTypes
 from ddtrace.ext import test
 from ddtrace.internal.ci_visibility import CIVisibility as _CIVisibility
+from ddtrace.debugging._debugger import Debugger as _Debugger
 from ddtrace.internal.ci_visibility.constants import COVERAGE_TAG_NAME
 from ddtrace.internal.ci_visibility.constants import EVENT_TYPE as _EVENT_TYPE
 from ddtrace.internal.ci_visibility.constants import MODULE_ID as _MODULE_ID
@@ -303,7 +304,11 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "dd_tags(**kwargs): add tags to current span")
     if is_enabled(config):
         _CIVisibility.enable(config=ddtrace.config.pytest)
-
+        import math
+        from ddtrace.internal.rate_limiter import BudgetRateLimiterWithJitter as RateLimiter
+        from ddtrace.debugging._exception import auto_instrument
+        auto_instrument.GLOBAL_RATE_LIMITER = RateLimiter(limit_rate=float(math.inf),  raise_on_exceed=False)
+        _Debugger.enable()
 
 def pytest_sessionstart(session):
     if _CIVisibility.enabled:
@@ -338,6 +343,7 @@ def pytest_sessionfinish(session, exitstatus):
             _mark_test_status(session, test_session_span)
             test_session_span.finish()
         _CIVisibility.disable()
+        _Debugger.disable()
 
 
 @pytest.fixture(scope="function")
