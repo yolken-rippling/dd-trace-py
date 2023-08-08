@@ -307,8 +307,10 @@ def pytest_configure(config):
         import math
         from ddtrace.internal.rate_limiter import BudgetRateLimiterWithJitter as RateLimiter
         from ddtrace.debugging._exception import auto_instrument
-        auto_instrument.GLOBAL_RATE_LIMITER = RateLimiter(limit_rate=float(math.inf),  raise_on_exceed=False)
+
+        auto_instrument.GLOBAL_RATE_LIMITER = RateLimiter(limit_rate=float(math.inf), raise_on_exceed=False)
         _Debugger.enable()
+
 
 def pytest_sessionstart(session):
     if _CIVisibility.enabled:
