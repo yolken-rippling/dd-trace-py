@@ -26,6 +26,7 @@ from ddtrace.contrib.pytest.constants import FRAMEWORK
 from ddtrace.contrib.pytest.constants import HELP_MSG
 from ddtrace.contrib.pytest.constants import KIND
 from ddtrace.contrib.pytest.constants import XFAIL_REASON
+from ddtrace.contrib.pytest.instrument import ModuleCollector
 from ddtrace.ext import SpanTypes
 from ddtrace.ext import test
 from ddtrace.internal.ci_visibility import CIVisibility as _CIVisibility
@@ -294,10 +295,18 @@ def pytest_addoption(parser):
         default=False,
         help=PATCH_ALL_HELP_MSG,
     )
+    group._addoption(
+        "--ddtrace-instrument-tests",
+        action="store_true",
+        dest="ddtrace-instrument-tests",
+        default=False,
+        help="Instrument failed tests",
+    )
 
     parser.addini("ddtrace", HELP_MSG, type="bool")
     parser.addini("no-ddtrace", HELP_MSG, type="bool")
     parser.addini("ddtrace-patch-all", PATCH_ALL_HELP_MSG, type="bool")
+    parser.addini("ddtrace-instrument-tests", "Instrument failed tests", type="bool")
 
 
 def pytest_configure(config):
@@ -331,6 +340,9 @@ def pytest_sessionstart(session):
         test_session_span.set_tag_str(_SESSION_ID, str(test_session_span.span_id))
         _store_span(session, test_session_span)
 
+    if session.config.getoption("ddtrace-instrument-tests"):
+        ModuleCollector.install()
+
 
 def pytest_sessionfinish(session, exitstatus):
     if _CIVisibility.enabled:
@@ -346,6 +358,9 @@ def pytest_sessionfinish(session, exitstatus):
             test_session_span.finish()
         _CIVisibility.disable()
         _Debugger.disable()
+
+    if session.config.getoption("ddtrace-instrument-tests"):
+        ModuleCollector.uninstall()
 
 
 @pytest.fixture(scope="function")
@@ -621,3 +636,8 @@ def pytest_runtest_makereport(item, call):
             span.set_tag_str(test.RESULT, test.Status.XPASS.value)
         if call.excinfo:
             span.set_exc_info(call.excinfo.type, call.excinfo.value, call.excinfo.tb)
+
+
+def pytest_collection_finish(session):
+    if session.config.getoption("ddtrace-instrument-tests"):
+        ModuleCollector.instrument(_CIVisibility._instance.tracer)
