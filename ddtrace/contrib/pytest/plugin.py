@@ -16,8 +16,10 @@ import json
 import os
 import re
 from typing import Dict
+from typing import Set
 
 from _pytest.nodes import get_fslocation_from_item
+from _pytest.stash import StashKey
 import pytest
 
 import ddtrace
@@ -30,7 +32,7 @@ from ddtrace.contrib.pytest.instrument import ModuleCollector
 from ddtrace.ext import SpanTypes
 from ddtrace.ext import test
 from ddtrace.internal.ci_visibility import CIVisibility as _CIVisibility
-from ddtrace.debugging._debugger import Debugger as _Debugger
+from ddtrace.debugging import DynamicInstrumentation as _DynamicInstrumentation
 from ddtrace.internal.ci_visibility.constants import COVERAGE_TAG_NAME
 from ddtrace.internal.ci_visibility.constants import EVENT_TYPE as _EVENT_TYPE
 from ddtrace.internal.ci_visibility.constants import MODULE_ID as _MODULE_ID
@@ -53,6 +55,9 @@ PATCH_ALL_HELP_MSG = "Call ddtrace.patch_all before running tests."
 log = get_logger(__name__)
 
 _global_skipped_elements = 0
+
+DD_SPANS_STASH_KEY = StashKey[Dict]
+DD_FAILED_TESTS_STASH_KEY = StashKey[Set]
 
 
 def encode_test_parameter(parameter):
@@ -318,7 +323,7 @@ def pytest_configure(config):
         from ddtrace.debugging._exception import auto_instrument
 
         auto_instrument.GLOBAL_RATE_LIMITER = RateLimiter(limit_rate=float(math.inf), raise_on_exceed=False)
-        _Debugger.enable()
+        _DynamicInstrumentation.enable()
 
 
 def pytest_sessionstart(session):
@@ -338,6 +343,13 @@ def pytest_sessionstart(session):
         test_session_span.set_tag_str(_EVENT_TYPE, _SESSION_TYPE)
         test_session_span.set_tag_str(test.COMMAND, _get_pytest_command(session.config))
         test_session_span.set_tag_str(_SESSION_ID, str(test_session_span.span_id))
+
+        session.stash[DD_SPANS_STASH_KEY] = {
+            "test_module_spans": set(),
+            "test_suite_spans": set(),
+            "test_spans": set(),
+        }
+        session.stash[DD_FAILED_TESTS_STASH_KEY] = set()
         _store_span(session, test_session_span)
 
     if session.config.getoption("ddtrace-instrument-tests"):
@@ -355,9 +367,25 @@ def pytest_sessionfinish(session, exitstatus):
                 )
                 test_session_span.set_metric(test.ITR_TEST_SKIPPING_COUNT, _global_skipped_elements)
             _mark_test_status(session, test_session_span)
+            from pprint import pprint
+
+            pprint(session.stash[DD_SPANS_STASH_KEY])
+            pprint(session.stash[DD_FAILED_TESTS_STASH_KEY])
+            # breakpoint()
+            if session.stash[DD_FAILED_TESTS_STASH_KEY]:
+                print("ROMAIN IS RERUNNING TESTS")
+                print("INSTRUMENTING")
+                # ModuleCollector.instrument(_CIVisibility._instance.tracer)
+                print("INSTRUMENTED")
+                for failed_test in session.stash[DD_FAILED_TESTS_STASH_KEY]:
+                    from _pytest.runner import runtestprotocol
+
+                    failed_test.ihook.pytest_runtest_logstart(nodeid=failed_test.nodeid, location=failed_test.location)
+                    reports = runtestprotocol(failed_test, failed_test)
+
             test_session_span.finish()
         _CIVisibility.disable()
-        _Debugger.disable()
+        _DynamicInstrumentation.disable()
 
     if session.config.getoption("ddtrace-instrument-tests"):
         ModuleCollector.uninstall()
@@ -421,6 +449,7 @@ def pytest_collection_modifyitems(session, config, items):
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_protocol(item, nextitem):
+    print("ROMAIN SAYS WE RAN OUR PROTOCOL")
     if not _CIVisibility.enabled:
         yield
         return
@@ -544,12 +573,22 @@ def pytest_runtest_protocol(item, nextitem):
         )
         if coverage_per_test:
             _attach_coverage(item)
+
+        spans_stash = item.session.stash[DD_SPANS_STASH_KEY]
+
+        spans_stash["test_module_spans"].add(test_module_span)
+        spans_stash["test_suite_spans"].add(test_suite_span)
+        spans_stash["test_spans"].add(span)
         # Run the actual test
         yield
 
         # Finish coverage for the test suite if coverage is enabled
         if coverage_per_test:
             _detach_coverage(item, span)
+
+        if item is nextitem:
+            # Assume we're running in retest mode:
+            return
 
         nextitem_pytest_module_item = _find_pytest_item(nextitem, pytest.Module)
         if nextitem is None or nextitem_pytest_module_item != pytest_module_item and not test_suite_span.finished:
@@ -626,6 +665,7 @@ def pytest_runtest_makereport(item, call):
             span.set_tag_str(XFAIL_REASON, getattr(result, "wasxfail", "XFail"))
             span.set_tag_str(test.RESULT, test.Status.XPASS.value)
     else:
+        item.session.stash[DD_FAILED_TESTS_STASH_KEY].add(item)
         # Store failure in test suite `pytest.Item` to propagate to test suite spans
         _mark_failed(item.parent)
         _mark_not_skipped(item.parent)
