@@ -59,17 +59,20 @@ class ModuleCollector(ModuleWatchdog):
 
     @classmethod
     def _trace(cls, f, args, kwargs):
+        # We may not have a tracer if code is in stdlib:
+        if cls._instance is None:
+            return f(*args, **kwargs)
         with cls._instance._tracer.trace(
-            name=f.__code__.co_name, resource=f.__code__.co_qualname, service=f.__module__
+            name=f.__code__.co_name, resource=f.__code__.co_name, service=f.__module__
         ) as span:
             collector = DynamicInstrumentation._instance._collector
-            message = "test"
+            message = "%s %s %s" % (f.__code__.co_name, f.__code__.co_name, f.__module__)
             probe = LogFunctionProbe(
                 probe_id=str(uuid.uuid4()),
                 version=0,
                 tags={},
                 module=f.__module__,
-                func_qname=f.__code__.co_qualname,
+                func_qname=f.__code__.co_name,
                 template=message,
                 segments=[LiteralTemplateSegment(message)],
                 take_snapshot=True,

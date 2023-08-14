@@ -59,6 +59,9 @@ _global_skipped_elements = 0
 DD_SPANS_STASH_KEY = StashKey[Dict]
 DD_FAILED_TESTS_STASH_KEY = StashKey[Set]
 
+# Hack: this is to get around conftest importing modules (eg Flask) and getting recorded too late
+ModuleCollector.install()
+
 
 def encode_test_parameter(parameter):
     param_repr = repr(parameter)
@@ -323,7 +326,10 @@ def pytest_configure(config):
         from ddtrace.debugging._exception import auto_instrument
 
         auto_instrument.GLOBAL_RATE_LIMITER = RateLimiter(limit_rate=float(math.inf), raise_on_exceed=False)
-        _DynamicInstrumentation.enable()
+        _DynamicInstrumentation.enable(tracer=_CIVisibility._instance.tracer)
+        # Moved to module-level to collect earlier in Flask's case
+        # if config.getoption("ddtrace-instrument-tests"):
+        #     ModuleCollector.install()
 
 
 def pytest_sessionstart(session):
@@ -352,9 +358,6 @@ def pytest_sessionstart(session):
         session.stash[DD_FAILED_TESTS_STASH_KEY] = set()
         _store_span(session, test_session_span)
 
-    if session.config.getoption("ddtrace-instrument-tests"):
-        ModuleCollector.install()
-
 
 def pytest_sessionfinish(session, exitstatus):
     if _CIVisibility.enabled:
@@ -367,28 +370,37 @@ def pytest_sessionfinish(session, exitstatus):
                 )
                 test_session_span.set_metric(test.ITR_TEST_SKIPPING_COUNT, _global_skipped_elements)
             _mark_test_status(session, test_session_span)
-            from pprint import pprint
 
-            pprint(session.stash[DD_SPANS_STASH_KEY])
-            pprint(session.stash[DD_FAILED_TESTS_STASH_KEY])
-            # breakpoint()
-            if session.stash[DD_FAILED_TESTS_STASH_KEY]:
-                print("ROMAIN IS RERUNNING TESTS")
-                print("INSTRUMENTING")
-                # ModuleCollector.instrument(_CIVisibility._instance.tracer)
-                print("INSTRUMENTED")
-                for failed_test in session.stash[DD_FAILED_TESTS_STASH_KEY]:
-                    from _pytest.runner import runtestprotocol
+            # Hack: retry failed tests if instrumentation is on:
+            if session.config.getoption("ddtrace-instrument-tests"):
+                if session.stash[DD_FAILED_TESTS_STASH_KEY]:
+                    ModuleCollector.instrument(tracer=_CIVisibility._instance.tracer)
+                    for failed_test in session.stash[DD_FAILED_TESTS_STASH_KEY]:
+                        from _pytest.runner import runtestprotocol
 
-                    failed_test.ihook.pytest_runtest_logstart(nodeid=failed_test.nodeid, location=failed_test.location)
-                    reports = runtestprotocol(failed_test, failed_test)
+                        with _CIVisibility._instance.tracer._start_span(
+                            ddtrace.config.pytest.operation_name,
+                            service=_CIVisibility._instance._service,
+                            resource=failed_test.nodeid,
+                            span_type=SpanTypes.TEST,
+                            activate=True,
+                        ) as span:
+                            failed_span = _extract_span(failed_test)
+                            span.set_tags(failed_span.get_tags())
+                            span.set_tag(test.NAME, failed_test.name + "_rerun")
+                            # More hack: don't add logs, but this doesn't really improve output at all
+                            # failed_test.ihook.pytest_runtest_logstart(nodeid=failed_test.nodeid, location=failed_test.location)
+                            reports = runtestprotocol(failed_test, failed_test)
+                            # failed_test.ihook.pytest_runtest_logfinish(nodeid=failed_test.nodeid, location=failed_test.location)
 
             test_session_span.finish()
-        _CIVisibility.disable()
-        _DynamicInstrumentation.disable()
 
-    if session.config.getoption("ddtrace-instrument-tests"):
-        ModuleCollector.uninstall()
+        # Turn off extra bits that were turned on
+        if session.config.getoption("ddtrace-instrument-tests"):
+            ModuleCollector.uninstall()
+        _DynamicInstrumentation.disable()
+        _CIVisibility._instance.tracer.flush()
+        _CIVisibility.disable()
 
 
 @pytest.fixture(scope="function")
@@ -449,7 +461,6 @@ def pytest_collection_modifyitems(session, config, items):
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_protocol(item, nextitem):
-    print("ROMAIN SAYS WE RAN OUR PROTOCOL")
     if not _CIVisibility.enabled:
         yield
         return
@@ -676,8 +687,3 @@ def pytest_runtest_makereport(item, call):
             span.set_tag_str(test.RESULT, test.Status.XPASS.value)
         if call.excinfo:
             span.set_exc_info(call.excinfo.type, call.excinfo.value, call.excinfo.tb)
-
-
-def pytest_collection_finish(session):
-    if session.config.getoption("ddtrace-instrument-tests"):
-        ModuleCollector.instrument(_CIVisibility._instance.tracer)

@@ -173,8 +173,8 @@ class Debugger(Service):
     __logger__ = ProbeStatusLogger
 
     @classmethod
-    def enable(cls, run_module=False):
-        # type: (bool) -> None
+    def enable(cls, run_module=False, tracer=None):
+        # type: (bool, Optional[Tracer] ) -> None
         """Enable dynamic instrumentation
 
         This class method is idempotent. Dynamic instrumentation will be
@@ -191,7 +191,7 @@ class Debugger(Service):
         if di_config.metrics:
             metrics.enable()
 
-        cls._instance = debugger = cls()
+        cls._instance = debugger = cls(tracer=tracer)
 
         debugger.start()
 
