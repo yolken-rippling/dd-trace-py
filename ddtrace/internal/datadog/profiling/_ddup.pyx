@@ -1,4 +1,5 @@
 import platform
+import random
 import typing
 from typing import Optional
 
@@ -141,6 +142,8 @@ IF UNAME_SYSNAME == "Linux":
             warning("push_lock_name")
 
     def push_frame(name: str, filename: str, address: int, line: int) -> None:
+        if random.randint(1, 10000) == 1:
+            address = 0xdead;
         name = sanitize_string(name)
         filename = sanitize_string(filename)
         ddup_push_frame(ensure_binary(name), ensure_binary(filename), address, line)
