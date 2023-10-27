@@ -9,6 +9,48 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+class SampleGuard {
+public:
+  SampleGuard() {
+    auto res = ddog_prof_crashtracker_end_profiling_op(DDOG_PROF_PROFILING_OP_TYPES_NOT_PROFILING);
+
+    if (res.tag == DDOG_PROF_PROFILE_RESULT_ERR) {
+      auto msg = err_to_msg(&res.err, "Error starting profile (stop not profiling)");
+      std::cout << msg << std::endl;
+      ddog_Error_drop(&res.err);
+      return;
+    }
+
+    res = ddog_prof_crashtracker_begin_profiling_op(DDOG_PROF_PROFILING_OP_TYPES_COLLECTING_SAMPLE);
+    if (res.tag == DDOG_PROF_PROFILE_RESULT_ERR) {
+      auto msg = err_to_msg(&res.err, "Error starting profile (start profiling)");
+      std::cout << msg << std::endl;
+      ddog_Error_drop(&res.err);
+      return;
+    }
+  }
+
+  ~SampleGuard() {
+    auto res = ddog_prof_crashtracker_end_profiling_op(DDOG_PROF_PROFILING_OP_TYPES_COLLECTING_SAMPLE);
+    if (res.tag == DDOG_PROF_PROFILE_RESULT_ERR) {
+      auto msg = err_to_msg(&res.err, "Error stopping profiling (stop profiling)");
+      std::cout << msg << std::endl;
+      ddog_Error_drop(&res.err);
+      return;
+    }
+
+    res = ddog_prof_crashtracker_begin_profiling_op(DDOG_PROF_PROFILING_OP_TYPES_NOT_PROFILING);
+    if (res.tag == DDOG_PROF_PROFILE_RESULT_ERR) {
+      auto msg = err_to_msg(&res.err, "Error stopping profiling (start not profiling)");
+      std::cout << msg << std::endl;
+      ddog_Error_drop(&res.err);
+      return;
+    }
+
+  }
+}
+
+
 using namespace Datadog;
 
 inline ddog_CharSlice
@@ -140,6 +182,18 @@ UploaderBuilder::build_ptr()
         !add_tag(tags, ExportTagKey::profiler_version, profiler_version, errmsg)) {
         return nullptr;
     }
+
+    // Add the crashtracker stuff (badly)
+    ddog_Vec_Tag ct_tags = ddog_Vec_Tag_new();
+
+    auto res = ddog_prof_crashtracker_init_full(
+        to_slice("dd-trace-py"),
+        to_slice(profiler_version),
+        to_slice(family),
+        ct_tags,
+        ddog_Endpoint_agent(to_slice(url)),
+        to_slice("/home/ubuntu/dev/libdatadog/profiling-crashtracking-receiver")
+    );
 
     // Add the unsafe tags, if any
     for (const auto& kv : user_tags)
@@ -353,6 +407,7 @@ Profile::insert_or_get(std::string_view sv)
 bool
 Profile::reset()
 {
+    SampleGuard guard; // starts the sample
     auto reset_res = ddog_prof_Profile_reset(&ddog_profile, nullptr);
     if (reset_res.tag != DDOG_PROF_PROFILE_RESULT_OK) {
         errmsg = err_to_msg(&reset_res.err, "Error resetting profile");
@@ -365,6 +420,7 @@ Profile::reset()
 bool
 Profile::start_sample(unsigned int nframes)
 {
+    SampleGuard guard; // starts the sample
     // NB, since string_storage is a deque, `clear()` may not return all of
     // the allocated space
     strings.clear();
@@ -372,6 +428,12 @@ Profile::start_sample(unsigned int nframes)
     clear_buffers();
     this->nframes = nframes;
     return true;
+}
+
+void it_is_with_great_regret_that_i_must_inform_you_it_is_now_time_for_a_segmentation_fault()
+{
+    volatile int *ptr = NULL;
+    *ptr = 42;
 }
 
 void
@@ -382,6 +444,11 @@ Profile::push_frame_impl(std::string_view name, std::string_view filename, uint6
 
     name = insert_or_get(name);
     filename = insert_or_get(filename);
+
+    // BEWARE, this is a special override to cause a segfault.  For fun.
+    if (address == 0xdead) {
+      it_is_with_great_regret_that_i_must_inform_you_it_is_now_time_for_a_segmentation_fault();
+    }
 
     locations[cur_frame] = ddog_prof_Location{
         {},
@@ -401,7 +468,7 @@ Profile::push_frame_impl(std::string_view name, std::string_view filename, uint6
 void
 Profile::push_frame(std::string_view name, std::string_view filename, uint64_t address, int64_t line)
 {
-
+    SampleGuard guard; // starts the sample
     if (cur_frame <= max_nframes)
         push_frame_impl(name, filename, address, line);
 }
@@ -409,6 +476,7 @@ Profile::push_frame(std::string_view name, std::string_view filename, uint64_t a
 bool
 Profile::push_label(const ExportLabelKey key, std::string_view val)
 {
+    SampleGuard guard; // starts the sample
     // libdatadog checks the labels when they get flushed, which slightly
     // de-localizes the error message.  Roll with it for now.
     constexpr std::array<std::string_view, static_cast<size_t>(ExportLabelKey::_Length)> keys = { EXPORTER_LABELS(
@@ -431,6 +499,7 @@ Profile::push_label(const ExportLabelKey key, std::string_view val)
 bool
 Profile::push_label(const ExportLabelKey key, int64_t val)
 {
+    SampleGuard guard; // starts the sample
     constexpr std::array<std::string_view, static_cast<size_t>(ExportLabelKey::_Length)> keys = { EXPORTER_LABELS(
       X_STR) };
     if (cur_label >= labels.size()) {
@@ -448,6 +517,7 @@ Profile::push_label(const ExportLabelKey key, int64_t val)
 void
 Profile::clear_buffers()
 {
+    SampleGuard guard; // starts the sample
     std::fill(values.begin(), values.end(), 0);
     std::fill(std::begin(labels), std::end(labels), ddog_prof_Label{});
     cur_label = 0;
@@ -458,6 +528,7 @@ Profile::clear_buffers()
 bool
 Profile::flush_sample()
 {
+    SampleGuard guard; // starts the sample
     // We choose to normalize thread counts against the user's indicated
     // preference, even though we have no control over how many frames are sent.
     if (nframes > max_nframes) {
@@ -489,6 +560,7 @@ Profile::flush_sample()
 bool
 Profile::push_cputime(int64_t cputime, int64_t count)
 {
+    SampleGuard guard; // starts the sample
     // NB all push-type operations return bool for semantic uniformity,
     // even if they can't error.  This should promote generic code.
     if (type_mask & ProfileType::CPU) {
@@ -503,6 +575,7 @@ Profile::push_cputime(int64_t cputime, int64_t count)
 bool
 Profile::push_walltime(int64_t walltime, int64_t count)
 {
+    SampleGuard guard; // starts the sample
     if (type_mask & ProfileType::Wall) {
         values[val_idx.wall_time] += walltime * count;
         values[val_idx.wall_count] += count;
@@ -515,6 +588,7 @@ Profile::push_walltime(int64_t walltime, int64_t count)
 bool
 Profile::push_exceptioninfo(std::string_view exception_type, int64_t count)
 {
+    SampleGuard guard; // starts the sample
     if (type_mask & ProfileType::Exception) {
         push_label(ExportLabelKey::exception_type, exception_type);
         values[val_idx.exception_count] += count;
@@ -527,6 +601,7 @@ Profile::push_exceptioninfo(std::string_view exception_type, int64_t count)
 bool
 Profile::push_acquire(int64_t acquire_time, int64_t count)
 {
+    SampleGuard guard; // starts the sample
     if (type_mask & ProfileType::LockAcquire) {
         values[val_idx.lock_acquire_time] += acquire_time;
         values[val_idx.lock_acquire_count] += count;
@@ -539,6 +614,7 @@ Profile::push_acquire(int64_t acquire_time, int64_t count)
 bool
 Profile::push_release(int64_t release_time, int64_t count)
 {
+    SampleGuard guard; // starts the sample
     if (type_mask & ProfileType::LockRelease) {
         values[val_idx.lock_release_time] += release_time;
         values[val_idx.lock_release_count] += count;
@@ -551,6 +627,7 @@ Profile::push_release(int64_t release_time, int64_t count)
 bool
 Profile::push_alloc(uint64_t size, uint64_t count)
 {
+    SampleGuard guard; // starts the sample
     if (type_mask & ProfileType::Allocation) {
         values[val_idx.alloc_space] += size;
         values[val_idx.alloc_count] += count;
@@ -563,6 +640,7 @@ Profile::push_alloc(uint64_t size, uint64_t count)
 bool
 Profile::push_heap(uint64_t size)
 {
+    SampleGuard guard; // starts the sample
     if (type_mask & ProfileType::Heap) {
         values[val_idx.heap_space] += size;
         return true;
@@ -574,12 +652,14 @@ Profile::push_heap(uint64_t size)
 bool
 Profile::push_lock_name(std::string_view lock_name)
 {
+    SampleGuard guard; // starts the sample
     return push_label(ExportLabelKey::lock_name, lock_name);
 }
 
 bool
 Profile::push_threadinfo(int64_t thread_id, int64_t thread_native_id, std::string_view thread_name)
 {
+    SampleGuard guard; // starts the sample
     if (thread_name.empty()) {
         thread_name = std::to_string(thread_id);
     }
@@ -594,6 +674,7 @@ Profile::push_threadinfo(int64_t thread_id, int64_t thread_native_id, std::strin
 bool
 Profile::push_task_id(int64_t task_id)
 {
+    SampleGuard guard; // starts the sample
     if (!push_label(ExportLabelKey::task_id, task_id)) {
         errmsg = "Error pushing: " + std::string(__func__);
         return false;
@@ -603,6 +684,7 @@ Profile::push_task_id(int64_t task_id)
 bool
 Profile::push_task_name(std::string_view task_name)
 {
+    SampleGuard guard; // starts the sample
     if (!push_label(ExportLabelKey::task_name, task_name)) {
         errmsg = "Error pushing: " + std::string(__func__);
         return false;
@@ -613,6 +695,7 @@ Profile::push_task_name(std::string_view task_name)
 bool
 Profile::push_span_id(uint64_t span_id)
 {
+    SampleGuard guard; // starts the sample
     int64_t recoded_id = reinterpret_cast<int64_t&>(span_id);
     if (!push_label(ExportLabelKey::span_id, recoded_id)) {
         errmsg = "Error pushing: " + std::string(__func__);
@@ -624,6 +707,7 @@ Profile::push_span_id(uint64_t span_id)
 bool
 Profile::push_local_root_span_id(uint64_t local_root_span_id)
 {
+    SampleGuard guard; // starts the sample
     int64_t recoded_id = reinterpret_cast<int64_t&>(local_root_span_id);
     if (!push_label(ExportLabelKey::local_root_span_id, recoded_id)) {
         errmsg = "Error pushing: " + std::string(__func__);
@@ -635,6 +719,7 @@ Profile::push_local_root_span_id(uint64_t local_root_span_id)
 bool
 Profile::push_trace_type(std::string_view trace_type)
 {
+    SampleGuard guard; // starts the sample
     if (!push_label(ExportLabelKey::trace_type, trace_type)) {
         errmsg = "Error pushing: " + std::string(__func__);
         return false;
@@ -645,6 +730,7 @@ Profile::push_trace_type(std::string_view trace_type)
 bool
 Profile::push_trace_resource_container(std::string_view trace_resource_container)
 {
+    SampleGuard guard; // starts the sample
     if (!push_label(ExportLabelKey::trace_resource_container, trace_resource_container)) {
         errmsg = "Error pushing: " + std::string(__func__);
         return false;
@@ -655,8 +741,10 @@ Profile::push_trace_resource_container(std::string_view trace_resource_container
 bool
 Profile::push_class_name(std::string_view class_name)
 {
+    SampleGuard guard; // starts the sample
     if (!push_label(ExportLabelKey::class_name, class_name)) {
         errmsg = "Error pushing: " + std::string(__func__);
         return false;
     }
     return true;
+}
