@@ -69,7 +69,7 @@ IF UNAME_SYSNAME == "Linux":
         void ddup_push_frame(const char *_name, const char *_filename, uint64_t address, int64_t line)
         bint ddup_flush_sample()
         bint ddup_set_runtime_id(const char *_id, size_t sz)
-        bint ddup_upload()
+        bint ddup_upload() nogil
 
     def warning(msg):
         if not is_quiet():
@@ -195,4 +195,5 @@ IF UNAME_SYSNAME == "Linux":
     def upload() -> None:
         runtime_id = ensure_binary(runtime.get_runtime_id())
         ddup_set_runtime_id(runtime_id, len(runtime_id))
-        ddup_upload()
+        with nogil:
+            ddup_upload()
