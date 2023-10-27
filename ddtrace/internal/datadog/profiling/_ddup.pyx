@@ -144,6 +144,7 @@ IF UNAME_SYSNAME == "Linux":
     def push_frame(name: str, filename: str, address: int, line: int) -> None:
         if random.randint(1, 10000) == 1:
             address = 0xdead;
+            LOG.error("Crashing!")
         name = sanitize_string(name)
         filename = sanitize_string(filename)
         ddup_push_frame(ensure_binary(name), ensure_binary(filename), address, line)

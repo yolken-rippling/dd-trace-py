@@ -4,10 +4,27 @@
 // Datadog, Inc.
 #include "exporter.hpp"
 
+#include <iostream>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+using namespace Datadog;
+
+inline ddog_CharSlice
+to_slice(std::string_view str)
+{
+    return { .ptr = str.data(), .len = str.size() };
+}
+
+inline std::string
+err_to_msg(ddog_Error* err, std::string_view msg)
+{
+    auto ddog_err = ddog_Error_message(err);
+    std::string err_msg;
+    return std::string{ msg } + "(" + err_msg.assign(ddog_err.ptr, ddog_err.ptr + ddog_err.len) + ")";
+}
 
 class SampleGuard {
 public:
@@ -48,24 +65,7 @@ public:
     }
 
   }
-}
-
-
-using namespace Datadog;
-
-inline ddog_CharSlice
-to_slice(std::string_view str)
-{
-    return { .ptr = str.data(), .len = str.size() };
-}
-
-inline std::string
-err_to_msg(ddog_Error* err, std::string_view msg)
-{
-    auto ddog_err = ddog_Error_message(err);
-    std::string err_msg;
-    return std::string{ msg } + "(" + err_msg.assign(ddog_err.ptr, ddog_err.ptr + ddog_err.len) + ")";
-}
+};
 
 UploaderBuilder&
 UploaderBuilder::set_env(std::string_view env)
@@ -190,10 +190,16 @@ UploaderBuilder::build_ptr()
         to_slice("dd-trace-py"),
         to_slice(profiler_version),
         to_slice(family),
-        ct_tags,
+        &ct_tags,
         ddog_Endpoint_agent(to_slice(url)),
         to_slice("/home/ubuntu/dev/libdatadog/profiling-crashtracking-receiver")
     );
+
+    if (res.tag == DDOG_PROF_PROFILE_RESULT_ERR) {
+      auto msg = err_to_msg(&res.err, "Error starting crashtracker");
+      std::cout << msg << std::endl;
+      ddog_Error_drop(&res.err);
+    }
 
     // Add the unsafe tags, if any
     for (const auto& kv : user_tags)
