@@ -1,6 +1,6 @@
+import dataclasses
 from typing import Any
 
-import attr
 import mock
 import pytest
 
@@ -41,7 +41,7 @@ from tests.utils import override_global_config
 
 
 def test_no_impl():
-    @attr.s
+    @dataclasses.dataclass
     class BadProcessor(SpanProcessor):
         pass
 
@@ -50,7 +50,7 @@ def test_no_impl():
 
 
 def test_default_post_init():
-    @attr.s
+    @dataclasses.dataclass
     class MyProcessor(SpanProcessor):
         def on_span_start(self, span):  # type: (Span) -> None
             pass

@@ -1,4 +1,5 @@
 import base64
+import dataclasses
 from datetime import datetime
 import hashlib
 import json
@@ -53,39 +54,39 @@ class RemoteConfigError(Exception):
     """
 
 
-@attr.s
-class ConfigMetadata(object):
+@dataclasses.dataclass
+class ConfigMetadata:
     """
     Configuration TUF target metadata
     """
 
-    id = attr.ib(type=str)
-    product_name = attr.ib(type=str)
-    sha256_hash = attr.ib(type=Optional[str])
-    length = attr.ib(type=Optional[int])
-    tuf_version = attr.ib(type=Optional[int])
-    apply_state = attr.ib(type=Optional[int], default=1, eq=False)
-    apply_error = attr.ib(type=Optional[str], default=None, eq=False)
+    id: str
+    product_name: str
+    sha256_hash: Optional[str]
+    length: Optional[int]
+    tuf_version: Optional[int]
+    apply_state: Optional[int] = dataclasses.field(default=1, compare=False)
+    apply_error: Optional[str] = dataclasses.field(default=None, compare=False)
 
 
-@attr.s
-class Signature(object):
-    keyid = attr.ib(type=str)
-    sig = attr.ib(type=str)
+@dataclasses.dataclass
+class Signature:
+    keyid: str
+    sig: str
 
 
-@attr.s
-class Key(object):
-    keytype = attr.ib(type=str)
-    keyid_hash_algorithms = attr.ib(type=List[str])
-    keyval = attr.ib(type=Mapping)
-    scheme = attr.ib(type=str)
+@dataclasses.dataclass
+class Key:
+    keytype: str
+    keyid_hash_algorithms: List[str]
+    keyval: Mapping
+    scheme: str
 
 
-@attr.s
-class Role(object):
-    keyids = attr.ib(type=List[str])
-    threshold = attr.ib(type=int)
+@dataclasses.dataclass
+class Role:
+    keyids: List[str]
+    threshold: int
 
 
 @attr.s
@@ -99,17 +100,17 @@ class Root(object):
     version = attr.ib(type=int)
 
 
-@attr.s
-class SignedRoot(object):
-    signatures = attr.ib(type=List[Signature])
-    signed = attr.ib(type=Root)
+@dataclasses.dataclass
+class SignedRoot:
+    signatures: List[Signature]
+    signed: Root
 
 
-@attr.s
-class TargetDesc(object):
-    length = attr.ib(type=int)
-    hashes = attr.ib(type=Mapping[str, str])
-    custom = attr.ib(type=Mapping[str, Any])
+@dataclasses.dataclass
+class TargetDesc:
+    length: int
+    hashes: Mapping[str, str]
+    custom: Mapping[str, Any]
 
 
 @attr.s
@@ -122,24 +123,24 @@ class Targets(object):
     version = attr.ib(type=int)
 
 
-@attr.s
-class SignedTargets(object):
-    signatures = attr.ib(type=List[Signature])
-    signed = attr.ib(type=Targets)
+@dataclasses.dataclass
+class SignedTargets:
+    signatures: List[Signature]
+    signed: Targets
 
 
-@attr.s
-class TargetFile(object):
-    path = attr.ib(type=str)
-    raw = attr.ib(type=str)
+@dataclasses.dataclass
+class TargetFile:
+    path: str
+    raw: str
 
 
-@attr.s
-class AgentPayload(object):
-    roots = attr.ib(type=List[SignedRoot], default=None)
-    targets = attr.ib(type=SignedTargets, default=None)
-    target_files = attr.ib(type=List[TargetFile], default=[])
-    client_configs = attr.ib(type=Set[str], default={})
+@dataclasses.dataclass
+class AgentPayload:
+    roots: Optional[List[SignedRoot]] = None
+    targets: Optional[SignedTargets] = None
+    target_files: List[TargetFile] = dataclasses.field(default_factory=list)
+    client_configs: Set[str] = dataclasses.field(default_factory=set)
 
 
 def _load_json(data):

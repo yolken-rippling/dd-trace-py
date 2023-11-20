@@ -24,12 +24,11 @@ SpanLinks can be set using :meth:`ddtrace.Span.link_span(...)` Ex::
     s1.link_span(s2.context, link_attributes)
 """
 
+import dataclasses
 from typing import Optional
 
-import attr
 
-
-@attr.s
+@dataclasses.dataclass
 class SpanLink:
     """
     TraceId [required]: The span's 128-bit Trace ID
@@ -44,12 +43,12 @@ class SpanLink:
     value is either a string, bool, number or an array of primitive type values.
     """
 
-    trace_id = attr.ib(type=int)
-    span_id = attr.ib(type=int)
-    tracestate = attr.ib(type=Optional[str], default=None)
-    flags = attr.ib(type=Optional[int], default=None)
-    attributes = attr.ib(type=dict, default=dict())
-    _dropped_attributes = attr.ib(type=int, default=0)
+    trace_id: int
+    span_id: int
+    tracestate: Optional[str] = None
+    flags: Optional[int] = None
+    attributes: dict = dataclasses.field(default_factory=dict)
+    _dropped_attributes: int = 0
 
     @property
     def name(self):

@@ -1,3 +1,5 @@
+import dataclasses
+import sys
 from typing import Any
 from typing import Dict
 from typing import List
@@ -81,3 +83,15 @@ def _get_metas_to_propagate(context):
         if isinstance(k, six.string_types) and k.startswith("_dd.p."):
             metas_to_propagate.append((k, v))
     return metas_to_propagate
+
+
+def dataclass_kwargs_with_slots(**kwargs: Any) -> dict[str, Any]:
+    """Helper to add ``slots=True`` to ``@dataclasses.dataclass`` kwargs for supported Python versions
+
+    @dataclasses.dataclass didn't add ``slots`` argument until Python 3.10
+
+    For older versions of Python, ``__slots__` will not be used.
+    """
+    if sys.version_info >= (3, 10):
+        kwargs["slots"] = True
+    return kwargs

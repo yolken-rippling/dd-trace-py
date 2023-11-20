@@ -1,9 +1,8 @@
 import abc
+import dataclasses
 import enum
+import threading
 import typing
-
-import attr
-import six
 
 from . import forksafe
 
@@ -28,12 +27,14 @@ class ServiceStatusError(RuntimeError):
         )
 
 
-@attr.s(eq=False)
-class Service(six.with_metaclass(abc.ABCMeta)):
+@dataclasses.dataclass(eq=False)
+class Service(metaclass=abc.ABCMeta):
     """A service that can be started or stopped."""
 
-    status = attr.ib(default=ServiceStatus.STOPPED, type=ServiceStatus, init=False, eq=False)
-    _service_lock = attr.ib(factory=forksafe.Lock, repr=False, init=False, eq=False)
+    status: ServiceStatus = dataclasses.field(init=False, default=ServiceStatus.STOPPED)
+    _service_lock: forksafe.ResetObject[threading.Lock] = dataclasses.field(
+        default_factory=forksafe.Lock, repr=False, init=False
+    )
 
     def __enter__(self):
         self.start()
@@ -100,7 +101,8 @@ class Service(six.with_metaclass(abc.ABCMeta)):
         """
 
     def join(
-        self, timeout=None  # type: typing.Optional[float]
+        self,
+        timeout=None,  # type: typing.Optional[float]
     ):
         # type: (...) -> None
         """Join the service once stopped."""

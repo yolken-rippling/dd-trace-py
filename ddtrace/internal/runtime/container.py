@@ -1,27 +1,28 @@
+import dataclasses
 import errno
 import re
+from typing import List
 from typing import Optional
 
-import attr
-
 from ..logger import get_logger
+from ..utils import dataclass_kwargs_with_slots
 
 
 log = get_logger(__name__)
 
 
-@attr.s(slots=True)
-class CGroupInfo(object):
+@dataclasses.dataclass(**dataclass_kwargs_with_slots())
+class CGroupInfo:
     """
     CGroup class for container information parsed from a group cgroup file
     """
 
-    id = attr.ib(default=None)
-    groups = attr.ib(default=None)
-    path = attr.ib(default=None)
-    container_id = attr.ib(default=None)
-    controllers = attr.ib(default=None)
-    pod_id = attr.ib(default=None)
+    id: Optional[str] = None
+    groups: Optional[str] = None
+    path: Optional[str] = None
+    container_id: Optional[str] = None
+    controllers: List[str] = dataclasses.field(default_factory=list)
+    pod_id: Optional[str] = None
 
     # The second part is the PCF/Garden regexp. We currently assume no suffix ($) to avoid matching pod UIDs
     # See https://github.com/DataDog/datadog-agent/blob/7.40.x/pkg/util/cgroups/reader.go#L50

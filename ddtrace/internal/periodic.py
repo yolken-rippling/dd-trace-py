@@ -1,8 +1,7 @@
 # -*- encoding: utf-8 -*-
+import dataclasses
 import threading
 import typing
-
-import attr
 
 from ddtrace.internal import service
 
@@ -105,12 +104,12 @@ class AwakeablePeriodicThread(PeriodicThread):
             self._on_shutdown()
 
 
-@attr.s(eq=False)
+@dataclasses.dataclass(eq=False)
 class PeriodicService(service.Service):
     """A service that runs periodically."""
 
-    _interval = attr.ib(type=float)
-    _worker = attr.ib(default=None, init=False, repr=False)
+    _interval: float
+    _worker: typing.Optional[PeriodicThread] = dataclasses.field(default=None, init=False, repr=False)
 
     __thread_class__ = PeriodicThread
 

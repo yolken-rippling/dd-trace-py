@@ -1,6 +1,6 @@
+import dataclasses
+import threading
 import typing
-
-import attr
 
 from ddtrace.ext import SpanTypes
 from ddtrace.internal import forksafe
@@ -12,11 +12,15 @@ from ddtrace.span import Span
 EndpointCountsType = typing.Dict[str, int]
 
 
-@attr.s(eq=False)
+@dataclasses.dataclass(eq=False)
 class EndpointCallCounterProcessor(SpanProcessor):
-    endpoint_counts = attr.ib(init=False, repr=False, type=EndpointCountsType, factory=lambda: {}, eq=False)
-    _endpoint_counts_lock = attr.ib(init=False, repr=False, factory=forksafe.Lock, eq=False)
-    _enabled = attr.ib(default=False, repr=False, eq=False)
+    endpoint_counts: EndpointCountsType = dataclasses.field(init=False, repr=False, default_factory=dict)
+    _endpoint_counts_lock: forksafe.ResetObject[threading.Lock] = dataclasses.field(
+        init=False,
+        repr=False,
+        default_factory=forksafe.Lock,
+    )
+    _enabled: bool = dataclasses.field(default=False, repr=False)
 
     def enable(self):
         # type: () -> None

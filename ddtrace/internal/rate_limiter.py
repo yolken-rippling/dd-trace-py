@@ -1,12 +1,11 @@
 from __future__ import division
 
+import dataclasses
 import random
 import threading
 from typing import Any
 from typing import Callable
 from typing import Optional
-
-import attr
 
 from ..internal import compat
 from ..internal.constants import DEFAULT_SAMPLING_RATE_LIMIT
@@ -177,8 +176,8 @@ class RateLimitExceeded(Exception):
     pass
 
 
-@attr.s
-class BudgetRateLimiterWithJitter(object):
+@dataclasses.dataclass
+class BudgetRateLimiterWithJitter:
     """A budget rate limiter with jitter.
 
     The jitter is induced by a uniform distribution. The rate limit can be
@@ -201,24 +200,24 @@ class BudgetRateLimiterWithJitter(object):
     budget of ``1``.
     """
 
-    limit_rate = attr.ib(type=float)
-    tau = attr.ib(type=float, default=1.0)
-    raise_on_exceed = attr.ib(type=bool, default=True)
-    on_exceed = attr.ib(type=Callable, default=None)
-    call_once = attr.ib(type=bool, default=False)
-    budget = attr.ib(type=float, init=False)
-    max_budget = attr.ib(type=float, init=False)
-    last_time = attr.ib(type=float, init=False, factory=compat.monotonic)
-    _lock = attr.ib(type=threading.Lock, init=False, factory=threading.Lock)
+    limit_rate: float
+    tau: float = 1.0
+    raise_on_exceed: bool = True
+    on_exceed: Optional[Callable] = None
+    call_once: bool = False
+    budget: float = dataclasses.field(init=False)
+    max_budget: float = dataclasses.field(init=False)
+    last_time: float = dataclasses.field(init=False, default_factory=compat.monotonic)
+    _lock: threading.Lock = dataclasses.field(init=False, default_factory=threading.Lock)
+    _on_exceed_called: bool = dataclasses.field(init=False, default=False)
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         if self.limit_rate == float("inf"):
             self.budget = self.max_budget = float("inf")
         elif self.limit_rate:
             self.budget = self.max_budget = self.limit_rate * self.tau
         else:
             self.budget = self.max_budget = 1.0
-        self._on_exceed_called = False
 
     def limit(self, f=None, *args, **kwargs):
         # type: (Optional[Callable[..., Any]], *Any, **Any) -> Any

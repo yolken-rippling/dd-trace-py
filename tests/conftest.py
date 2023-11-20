@@ -1,6 +1,7 @@
 import ast
 import base64
 import contextlib
+import dataclasses
 import importlib
 from itertools import product
 import json
@@ -18,7 +19,6 @@ from unittest import mock
 
 from _pytest.runner import call_and_report
 from _pytest.runner import pytest_runtest_protocol as default_pytest_runtest_protocol
-import attr
 import pytest
 
 import ddtrace
@@ -28,7 +28,6 @@ from ddtrace.internal.remoteconfig.client import RemoteConfigClient
 from ddtrace.internal.remoteconfig.worker import remoteconfig_poller
 from ddtrace.internal.service import ServiceStatusError
 from ddtrace.internal.telemetry import TelemetryWriter
-from ddtrace.internal.utils.formats import parse_tags_str
 from tests import utils
 from tests.utils import DummyTracer
 from tests.utils import TracerSpanContainer
@@ -399,10 +398,10 @@ def telemetry_writer():
         yield telemetry_writer
 
 
-@attr.s
+@dataclasses.dataclass
 class TelemetryTestSession(object):
-    token = attr.ib(type=str)
-    telemetry_writer = attr.ib(type=TelemetryWriter)
+    token: str
+    telemetry_writer: TelemetryWriter
 
     def create_connection(self):
         parsed = parse.urlparse(self.telemetry_writer._client._agent_url)

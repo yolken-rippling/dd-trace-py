@@ -1,5 +1,6 @@
 import contextlib
 from contextlib import contextmanager
+import dataclasses
 import datetime as dt
 import inspect
 import json
@@ -9,7 +10,6 @@ import sys
 import time
 from typing import List
 
-import attr
 import pkg_resources
 import pytest
 
@@ -945,10 +945,10 @@ class SnapshotFailed(Exception):
     pass
 
 
-@attr.s
+@dataclasses.dataclass
 class SnapshotTest(object):
-    token = attr.ib(type=str)
-    tracer = attr.ib(type=ddtrace.Tracer, default=ddtrace.tracer)
+    token: str
+    tracer: ddtrace.Tracer = dataclasses.field(default=ddtrace.tracer)
 
     def clear(self):
         """Clear any traces sent that were sent for this snapshot."""

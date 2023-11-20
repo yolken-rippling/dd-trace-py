@@ -1,11 +1,12 @@
 import collections
 from copy import deepcopy
+import dataclasses
 from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import Set
 
-import attr
+from ddtrace.internal.utils import dataclass_kwargs_with_slots
 
 from .internal.logger import get_logger
 
@@ -18,8 +19,8 @@ except ImportError:
 log = get_logger(__name__)
 
 
-@attr.s(slots=True)
-class Hooks(object):
+@dataclasses.dataclass(**dataclass_kwargs_with_slots())
+class Hooks:
     """
     Hooks configuration object is used for registering and calling hook functions
 
@@ -30,7 +31,7 @@ class Hooks(object):
             pass
     """
 
-    _hooks = attr.ib(init=False, factory=lambda: collections.defaultdict(set), type=DefaultDict[str, Set])
+    _hooks: DefaultDict[str, Set] = dataclasses.field(init=False, default_factory=lambda: collections.defaultdict(set))
 
     def __deepcopy__(self, memodict=None):
         hooks = Hooks()

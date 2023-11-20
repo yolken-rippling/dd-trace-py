@@ -1,5 +1,6 @@
 import abc
 from collections import defaultdict
+import dataclasses
 from threading import Lock
 from threading import RLock
 from typing import Dict
@@ -7,9 +8,6 @@ from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Union
-
-import attr
-import six
 
 from ddtrace import config
 from ddtrace.constants import BASE_SERVICE_KEY
@@ -41,20 +39,20 @@ except ImportError:
 log = get_logger(__name__)
 
 
-@attr.s
-class TraceProcessor(six.with_metaclass(abc.ABCMeta)):
-    def __attrs_post_init__(self):
+@dataclasses.dataclass
+class TraceProcessor(metaclass=abc.ABCMeta):
+    def __post_init__(self):
         # type: () -> None
         """Default post initializer which logs the representation of the
         TraceProcessor at the ``logging.DEBUG`` level.
 
         The representation can be modified with the ``repr`` argument to the
-        attrs attribute::
+        dataclasses attribute::
 
-            @attr.s
+            @dataclasses.dataclass
             class MyTraceProcessor(TraceProcessor):
-                field_to_include = attr.ib(repr=True)
-                field_to_exclude = attr.ib(repr=False)
+                field_to_include = dataclasses.field(repr=True)
+                field_to_exclude = dataclasses.field(repr=False)
         """
         log.debug("initialized trace processor %r", self)
 
@@ -69,7 +67,7 @@ class TraceProcessor(six.with_metaclass(abc.ABCMeta)):
         pass
 
 
-@attr.s
+@dataclasses.dataclass
 class TraceSamplingProcessor(TraceProcessor):
     """Processor that keeps traces that have sampled spans. If all spans
     are unsampled then ``None`` is returned.
@@ -79,7 +77,7 @@ class TraceSamplingProcessor(TraceProcessor):
     parts of the trace are unsampled when the whole trace should be sampled.
     """
 
-    _compute_stats_enabled = attr.ib(type=bool)
+    _compute_stats_enabled: bool
 
     def process_trace(self, trace):
         # type: (List[Span]) -> Optional[List[Span]]
@@ -104,7 +102,7 @@ class TraceSamplingProcessor(TraceProcessor):
         return None
 
 
-@attr.s
+@dataclasses.dataclass
 class TopLevelSpanProcessor(SpanProcessor):
     """Processor marks spans as top level
 
@@ -127,7 +125,7 @@ class TopLevelSpanProcessor(SpanProcessor):
             span.set_metric("_dd.top_level", 1)
 
 
-@attr.s
+@dataclasses.dataclass
 class TraceTagsProcessor(TraceProcessor):
     """Processor that applies trace-level tags to the trace."""
 
@@ -158,7 +156,7 @@ class TraceTagsProcessor(TraceProcessor):
         return trace
 
 
-@attr.s
+@dataclasses.dataclass
 class SpanAggregator(SpanProcessor):
     """Processor that aggregates spans together by trace_id and writes the
     spans to the provided writer when:
@@ -169,34 +167,32 @@ class SpanAggregator(SpanProcessor):
           finished in the collection and ``partial_flush_enabled`` is True.
     """
 
-    @attr.s
-    class _Trace(object):
-        spans = attr.ib(default=attr.Factory(list))  # type: List[Span]
-        num_finished = attr.ib(type=int, default=0)  # type: int
+    @dataclasses.dataclass
+    class _Trace:
+        spans: List[Span] = dataclasses.field(default_factory=list)
+        num_finished: int = 0
 
-    _partial_flush_enabled = attr.ib(type=bool)
-    _partial_flush_min_spans = attr.ib(type=int)
-    _trace_processors = attr.ib(type=Iterable[TraceProcessor])
-    _writer = attr.ib(type=TraceWriter)
-    _traces = attr.ib(
-        factory=lambda: defaultdict(lambda: SpanAggregator._Trace()),
+    _partial_flush_enabled: bool
+    _partial_flush_min_spans: int
+    _trace_processors: Iterable[TracerProcessor]
+    _writer: TraceWriter
+    _traces: DefaultDict[int, "_Trace"] = dataclasses.field(
+        default_factory=lambda: defaultdict(lambda: SpanAggregator._Trace()),
         init=False,
-        type=DefaultDict[int, "_Trace"],
         repr=False,
     )
     if config._span_aggregator_rlock:
-        _lock = attr.ib(init=False, factory=RLock, repr=False, type=Union[RLock, Lock])
+        _lock: Union[RLock, Lock] = dataclasses.field(init=False, default_factory=RLock, repr=False)
     else:
-        _lock = attr.ib(init=False, factory=Lock, repr=False, type=Union[RLock, Lock])
+        _lock: Union[RLock, Lock] = dataclasses.field(init=False, default_factory=Lock, repr=False)
     # Tracks the number of spans created and tags each count with the api that was used
     # ex: otel api, opentracing api, datadog api
-    _span_metrics = attr.ib(
+    _span_metrics: Dict[str, DefaultDict] = dataclasses.field(
         init=False,
-        factory=lambda: {
+        default_factory=lambda: {
             "spans_created": defaultdict(int),
             "spans_finished": defaultdict(int),
         },
-        type=Dict[str, DefaultDict],
     )
 
     def on_span_start(self, span):
@@ -300,7 +296,7 @@ class SpanAggregator(SpanProcessor):
             self._span_metrics[metric_name] = defaultdict(int)
 
 
-@attr.s
+@dataclasses.dataclass
 class SpanSamplingProcessor(SpanProcessor):
     """SpanProcessor for sampling single spans:
 
@@ -312,7 +308,7 @@ class SpanSamplingProcessor(SpanProcessor):
       Agent even if the dropped trace is not (as is the case when trace stats computation is enabled).
     """
 
-    rules = attr.ib(type=List[SpanSamplingRule])
+    rules: List[SpanSamplingRule]
 
     def on_span_start(self, span):
         # type: (Span) -> None

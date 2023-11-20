@@ -1,9 +1,7 @@
 import abc
+import dataclasses
 from typing import List
 from typing import Optional
-
-import attr
-import six
 
 from ddtrace import Span
 from ddtrace.internal.logger import get_logger
@@ -12,13 +10,13 @@ from ddtrace.internal.logger import get_logger
 log = get_logger(__name__)
 
 
-@attr.s
-class SpanProcessor(six.with_metaclass(abc.ABCMeta)):
+@dataclasses.dataclass
+class SpanProcessor(metaclass=abc.ABCMeta):
     """A Processor is used to process spans as they are created and finished by a tracer."""
 
     __processors__ = []  # type: List["SpanProcessor"]
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         # type: () -> None
         """Default post initializer which logs the representation of the
         Processor at the ``logging.DEBUG`` level.
@@ -26,7 +24,7 @@ class SpanProcessor(six.with_metaclass(abc.ABCMeta)):
         The representation can be modified with the ``repr`` argument to the
         attrs attribute::
 
-            @attr.s
+            @dataclasses.dataclass
             class MyProcessor(Processor):
                 field_to_include = attr.ib(repr=True)
                 field_to_exclude = attr.ib(repr=False)
