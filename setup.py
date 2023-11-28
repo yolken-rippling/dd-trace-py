@@ -653,6 +653,16 @@ setup(
                 define_macros=encoding_macros,
             ),
             Cython.Distutils.Extension(
+                "ddtrace.internal.core.context",
+                sources=["ddtrace/internal/core/context.pyx"],
+                language="c",
+            ),
+            Cython.Distutils.Extension(
+                "ddtrace.internal.core.hub",
+                sources=["ddtrace/internal/core/hub.pyx"],
+                language="c",
+            ),
+            Cython.Distutils.Extension(
                 "ddtrace.profiling.collector.stack",
                 sources=["ddtrace/profiling/collector/stack.pyx"],
                 language="c",

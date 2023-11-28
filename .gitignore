@@ -18,6 +18,8 @@ ddtrace/internal/datadog/profiling/_ddup.cpp
 ddtrace/internal/_encoding.c
 ddtrace/internal/_rand.c
 ddtrace/internal/_tagset.c
+ddtrace/internal/core/context.c
+ddtrace/internal/core/hub.c
 *.so
 *.a
 
