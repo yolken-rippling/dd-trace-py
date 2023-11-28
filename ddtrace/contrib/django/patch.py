@@ -760,7 +760,7 @@ def _patch(django):
         )
 
     when_imported("django.core.handlers.wsgi")(lambda m: trace_utils.wrap(m, "WSGIRequest.__init__", wrap_wsgi_environ))
-    core.dispatch("django.patch", [])
+    core.dispatch("django.patch")
 
     @when_imported("django.core.handlers.base")
     def _(m):

@@ -168,7 +168,7 @@ def patch():
     flask._datadog_patch = True
 
     Pin().onto(flask.Flask)
-    core.dispatch("flask.patch", [flask_version])
+    core.dispatch("flask.patch", flask_version)
     # flask.app.Flask methods that have custom tracing (add metadata, wrap functions, etc)
     _w("flask", "Flask.wsgi_app", patched_wsgi_app)
     _w("flask", "Flask.dispatch_request", request_patcher("dispatch_request"))
@@ -384,7 +384,7 @@ def patched_finalize_request(wrapped, instance, args, kwargs):
     if getattr(rv, "is_sequence", False):
         response = rv.response
         headers = rv.headers
-    core.dispatch("flask.finalize_request.post", [response, headers])
+    core.dispatch("flask.finalize_request.post", response, headers)
     return rv
 
 

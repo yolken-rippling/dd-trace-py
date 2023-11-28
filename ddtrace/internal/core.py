@@ -100,18 +100,17 @@ like this::
 
 The names of these events follow the pattern ``context.[started|ended].<context_name>``.
 """
-from collections import defaultdict
 from contextlib import contextmanager
 import logging
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Callable
 from typing import Optional
 
 from ddtrace import config
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Callable
     from typing import Dict
     from typing import List
     from typing import Tuple
@@ -129,42 +128,41 @@ log = logging.getLogger(__name__)
 
 
 _CURRENT_CONTEXT = None
-_EVENT_HUB = None
 ROOT_CONTEXT_ID = "__root"
 
 
 class EventHub:
+    __slots__ = ("_listeners",)
+    _listeners: dict[str, list[Callable]]
+
     def __init__(self):
-        self.reset()
+        self._listeners = {}
 
     def has_listeners(self, event_id):
         # type: (str) -> bool
-        return event_id in self._listeners
+        if event_id not in self._listeners:
+            return False
+
+        return len(self._listeners[event_id]) > 0
 
     def on(self, event_id, callback):
         # type: (str, Callable) -> None
-        if callback not in self._listeners[event_id]:
+        if event_id not in self._listeners:
+            self._listeners[event_id] = [callback]
+        else:
             self._listeners[event_id].insert(0, callback)
 
     def reset(self):
-        if hasattr(self, "_listeners"):
-            del self._listeners
-        self._listeners = defaultdict(list)
+        self._listeners.clear()
 
-    def dispatch(self, event_id, args, *other_args):
+    def dispatch(self, event_id: str, *args: Any):
         # type: (...) -> Tuple[List[Optional[Any]], List[Optional[Exception]]]
-        if not isinstance(args, list):
-            args = [args] + list(other_args)
-        else:
-            if other_args:
-                raise TypeError(
-                    "When the first argument expected by the event handler is a list, all arguments "
-                    "must be passed in a list. For example, use dispatch('foo', [[l1, l2], arg2]) "
-                    "instead of dispatch('foo', [l1, l2], arg2)."
-                )
+        if not self.has_listeners(event_id):
+            return [], []
+
         results = []
         exceptions = []
-        for listener in self._listeners.get(event_id, []):
+        for listener in self._listeners[event_id]:
             result = None
             exception = None
             try:
@@ -178,27 +176,27 @@ class EventHub:
         return results, exceptions
 
 
-_EVENT_HUB = contextvars.ContextVar("EventHub_var", default=EventHub())
+_EVENT_HUB = EventHub()
 
 
 def has_listeners(event_id):
     # type: (str) -> bool
-    return _EVENT_HUB.get().has_listeners(event_id)  # type: ignore
+    return _EVENT_HUB.has_listeners(event_id)  # type: ignore
 
 
 def on(event_id, callback):
     # type: (str, Callable) -> None
-    return _EVENT_HUB.get().on(event_id, callback)  # type: ignore
+    return _EVENT_HUB.on(event_id, callback)  # type: ignore
 
 
 def reset_listeners():
     # type: () -> None
-    _EVENT_HUB.get().reset()  # type: ignore
+    _EVENT_HUB.reset()  # type: ignore
 
 
-def dispatch(event_id, args, *other_args):
+def dispatch(event_id: str, *args: Any):
     # type: (...) -> Tuple[List[Optional[Any]], List[Optional[Exception]]]
-    return _EVENT_HUB.get().dispatch(event_id, args, *other_args)  # type: ignore
+    return _EVENT_HUB.dispatch(event_id, *args)  # type: ignore
 
 
 class ExecutionContext:
@@ -214,7 +212,7 @@ class ExecutionContext:
         self._data.update(kwargs)
         if self._span is None and _CURRENT_CONTEXT is not None:
             self._token = _CURRENT_CONTEXT.set(self)
-        dispatch("context.started.%s" % self.identifier, [self])
+        dispatch("context.started.%s" % self.identifier, self)
 
     def __repr__(self):
         return self.__class__.__name__ + " '" + self.identifier + "' @ " + str(id(self))
@@ -228,7 +226,7 @@ class ExecutionContext:
         return self._parents[0] if self._parents else None
 
     def end(self):
-        dispatch_result = dispatch("context.ended.%s" % self.identifier, [self])
+        dispatch_result = dispatch("context.ended.%s" % self.identifier, self)
         if self._span is None:
             try:
                 _CURRENT_CONTEXT.reset(self._token)
