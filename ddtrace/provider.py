@@ -7,6 +7,7 @@ from typing import Union  # noqa:F401
 
 import six
 
+from . import config
 from .context import Context  # noqa:F401
 from .internal.logger import get_logger
 from .span import Span
@@ -33,7 +34,7 @@ class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
 
     def __init__(self):
         # type: (...) -> None
-        self._hooks = MessageBus()
+        self._hooks = MessageBus(config._raise)
 
     @abc.abstractmethod
     def _has_active_context(self):

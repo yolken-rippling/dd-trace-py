@@ -131,7 +131,7 @@ log = logging.getLogger(__name__)
 
 _CURRENT_CONTEXT = None
 ROOT_CONTEXT_ID = "__root"
-_EVENT_HUB = contextvars.ContextVar("EventHub_var", default=MessageBus())
+_EVENT_HUB = contextvars.ContextVar("EventHub_var", default=MessageBus(config._raise))
 
 
 def has_listeners(event_id: str) -> bool:

@@ -263,7 +263,7 @@ class Tracer(object):
             self.data_streams_processor = DataStreamsProcessor(self._agent_url)
             register_on_exit_signal(self._atexit)
 
-        self._hooks = MessageBus()
+        self._hooks = MessageBus(config._raise)
         atexit.register(self._atexit)
         forksafe.register(self._child_after_fork)
 

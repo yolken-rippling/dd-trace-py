@@ -1,6 +1,7 @@
 from typing import Any, Callable
 
 class MessageBus:
+    def __init__(self, raise_errors: bool): ...
     def reset(self) -> None:
         """Remove all registered listeners"""
 
