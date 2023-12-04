@@ -100,24 +100,18 @@ like this::
 
 The names of these events follow the pattern ``context.[started|ended].<context_name>``.
 """
-from collections import defaultdict
 from contextlib import contextmanager
 import logging
-from typing import TYPE_CHECKING  # noqa:F401
-from typing import Any  # noqa:F401
-from typing import Optional  # noqa:F401
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Optional
+from typing import Callable
+
+if TYPE_CHECKING:
+    from ddtrace.span import Span  # noqa:F401
 
 from ddtrace import config
 from ddtrace.internal._core import MessageBus
-
-
-if TYPE_CHECKING:  # pragma: no cover
-    from typing import Callable  # noqa:F401
-    from typing import Dict  # noqa:F401
-    from typing import List  # noqa:F401
-    from typing import Tuple  # noqa:F401
-
-    from ddtrace.span import Span  # noqa:F401
 
 
 try:
@@ -146,7 +140,7 @@ def reset_listeners() -> None:
     _EVENT_HUB.get().reset()  # type: ignore
 
 
-def dispatch(event_id: str, args: tuple[Any, ...]) -> Tuple[List[Any], List[Exception]]:
+def dispatch(event_id: str, args: tuple[Any, ...]) -> tuple[list[Any], list[Exception]]:
     return _EVENT_HUB.get().dispatch(event_id, args)  # type: ignore
 
 
@@ -225,7 +219,7 @@ class ExecutionContext:
         return value
 
     def get_items(self, data_keys):
-        # type: (List[str]) -> Optional[Any]
+        # type: (list[str]) -> Optional[Any]
         return [self.get_item(key) for key in data_keys]
 
     def set_item(self, data_key, data_value):
@@ -239,7 +233,7 @@ class ExecutionContext:
         return self.set_item(data_key, data_value)
 
     def set_items(self, keys_values):
-        # type: (Dict[str, Optional[Any]]) -> None
+        # type: (dict[str, Optional[Any]]) -> None
         for data_key, data_value in keys_values.items():
             self.set_item(data_key, data_value)
 
@@ -275,7 +269,7 @@ def get_item(data_key, span=None):
 
 
 def get_items(data_keys, span=None):
-    # type: (List[str], Optional[Span]) -> Optional[Any]
+    # type: (list[str], Optional[Span]) -> Optional[Any]
     if span is not None and span._local_root is not None:
         return [span._local_root._get_ctx_item(key) for key in data_keys]
     else:
@@ -297,7 +291,7 @@ def set_item(data_key, data_value, span=None):
 
 
 def set_items(keys_values, span=None):
-    # type: (Dict[str, Optional[Any]], Optional[Span]) -> None
+    # type: (dict[str, Optional[Any]], Optional[Span]) -> None
     if span is not None and span._local_root is not None:
         span._local_root._set_ctx_items(keys_values)
     else:
