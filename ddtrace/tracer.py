@@ -24,7 +24,6 @@ from ddtrace.internal.utils import _get_metas_to_propagate
 from ddtrace.settings.asm import config as asm_config
 from ddtrace.settings.peer_service import _ps_config
 
-from . import _hooks
 from .constants import ENV_KEY
 from .constants import HOSTNAME_KEY
 from .constants import PID
@@ -36,6 +35,7 @@ from .internal import compat
 from .internal import debug
 from .internal import forksafe
 from .internal import hostname
+from .internal._core import MessageBus
 from .internal.atexit import register_on_exit_signal
 from .internal.constants import SAMPLING_DECISION_TRACE_TAG_KEY
 from .internal.constants import SPAN_API_DATADOG
@@ -263,7 +263,7 @@ class Tracer(object):
             self.data_streams_processor = DataStreamsProcessor(self._agent_url)
             register_on_exit_signal(self._atexit)
 
-        self._hooks = _hooks.Hooks()
+        self._hooks = MessageBus()
         atexit.register(self._atexit)
         forksafe.register(self._child_after_fork)
 
@@ -288,7 +288,7 @@ class Tracer(object):
         :param func: The function to call when starting a span.
                      The started span will be passed as argument.
         """
-        self._hooks.register(self.__class__.start_span, func)
+        self._hooks.on("start_span", func)
         return func
 
     def deregister_on_start_span(self, func: Callable) -> Callable:
@@ -299,7 +299,7 @@ class Tracer(object):
         :param func: The function to stop calling when starting a span.
         """
 
-        self._hooks.deregister(self.__class__.start_span, func)
+        self._hooks.remove("start_span", func)
         return func
 
     @property
@@ -726,7 +726,7 @@ class Tracer(object):
         if self.enabled:
             for p in chain(self._span_processors, SpanProcessor.__processors__, self._deferred_processors):
                 p.on_span_start(span)
-        self._hooks.emit(self.__class__.start_span, span)
+        self._hooks.dispatch("start_span", (span,))
 
         return span
 

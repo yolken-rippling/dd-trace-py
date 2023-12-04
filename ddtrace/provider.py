@@ -7,22 +7,18 @@ from typing import Union  # noqa:F401
 
 import six
 
-from . import _hooks
 from .context import Context  # noqa:F401
 from .internal.logger import get_logger
 from .span import Span
+from .internal._core import MessageBus
 
 
 log = get_logger(__name__)
 
 
-_DD_CONTEXTVAR = contextvars.ContextVar(
-    "datadog_contextvar", default=None
-)  # type: contextvars.ContextVar[Optional[Union[Context, Span]]]
+_DD_CONTEXTVAR = contextvars.ContextVar("datadog_contextvar", default=None)  # type: contextvars.ContextVar[Optional[Union[Context, Span]]]
 
-_DD_CI_CONTEXTVAR = contextvars.ContextVar(
-    "datadog_civisibility_contextvar", default=None
-)  # type: contextvars.ContextVar[Optional[Union[Context, Span]]]
+_DD_CI_CONTEXTVAR = contextvars.ContextVar("datadog_civisibility_contextvar", default=None)  # type: contextvars.ContextVar[Optional[Union[Context, Span]]]
 
 
 class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
@@ -37,7 +33,7 @@ class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
 
     def __init__(self):
         # type: (...) -> None
-        self._hooks = _hooks.Hooks()
+        self._hooks = MessageBus()
 
     @abc.abstractmethod
     def _has_active_context(self):
@@ -46,7 +42,7 @@ class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
     @abc.abstractmethod
     def activate(self, ctx):
         # type: (Optional[Union[Context, Span]]) -> None
-        self._hooks.emit(self.activate, ctx)
+        self._hooks.dispatch("activate", (ctx,))
 
     @abc.abstractmethod
     def active(self):
@@ -62,7 +58,7 @@ class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
         :param func: The function to call when a span is activated.
                      The activated span will be passed as argument.
         """
-        self._hooks.register(self.activate, func)
+        self._hooks.on("activate", func)
         return func
 
     def _deregister_on_activate(self, func):
@@ -74,7 +70,7 @@ class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
         :param func: The function to stop calling when a span is activated.
         """
 
-        self._hooks.deregister(self.activate, func)
+        self._hooks.remove("activate", func)
         return func
 
     def __call__(self, *args, **kwargs):

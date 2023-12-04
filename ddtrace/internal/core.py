@@ -77,7 +77,7 @@ passing some data along with the event::
 
 
     call = tracer.trace("operation")
-    core.dispatch("flask.blocked_request_callable", call)
+    core.dispatch("flask.blocked_request_callable", (call, ))
 
 
 The AppSec code listens for this event and does some AppSec-specific stuff in the handler::
@@ -142,7 +142,7 @@ class ExecutionContext:
         self._data.update(kwargs)
         if self._span is None and _CURRENT_CONTEXT is not None:
             self._token = _CURRENT_CONTEXT.set(self)
-        dispatch("context.started.%s" % self.identifier, [self])
+        dispatch("context.started.%s" % self.identifier, (self,))
 
     def __repr__(self):
         return self.__class__.__name__ + " '" + self.identifier + "' @ " + str(id(self))
@@ -156,7 +156,7 @@ class ExecutionContext:
         return self._parents[0] if self._parents else None
 
     def end(self):
-        dispatch_result = dispatch("context.ended.%s" % self.identifier, [self])
+        dispatch_result = dispatch_with_results("context.ended.%s" % self.identifier, (self,))
         if self._span is None:
             try:
                 _CURRENT_CONTEXT.reset(self._token)
