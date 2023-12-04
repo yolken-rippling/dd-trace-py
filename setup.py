@@ -11,6 +11,7 @@ import tarfile
 from setuptools import Extension, find_packages, setup  # isort: skip
 from setuptools.command.build_ext import build_ext  # isort: skip
 from setuptools.command.build_py import build_py as BuildPyCommand  # isort: skip
+from setuptools_rust import Binding, RustExtension
 from pkg_resources import get_build_platform  # isort: skip
 from distutils.command.clean import clean as CleanCommand  # isort: skip
 
@@ -618,7 +619,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
     ],
-    setup_requires=["setuptools_scm[toml]>=4", "cython", "cmake>=3.24.2"],
+    setup_requires=["setuptools_scm[toml]>=4", "cython", "cmake>=3.24.2", "setuptools-rust"],
     ext_modules=ext_modules
     + cythonize(
         [
@@ -683,4 +684,13 @@ setup(
     + get_exts_for("wrapt")
     + get_exts_for("psutil")
     + get_ddup_ext(),
+    rust_extensions=[
+        RustExtension(
+            "ddtrace.internal._core",
+            path="src/core/Cargo.toml",
+            py_limited_api="auto",
+            binding=Binding.PyO3,
+            debug=os.getenv("_DD_RUSTC_DEBUG") == "1",
+        ),
+    ],
 )
