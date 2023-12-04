@@ -77,7 +77,7 @@ passing some data along with the event::
 
 
     call = tracer.trace("operation")
-    core.dispatch("flask.blocked_request_callable", call)
+    core.dispatch("flask.blocked_request_callable", (call, ))
 
 
 The AppSec code listens for this event and does some AppSec-specific stuff in the handler::
@@ -108,6 +108,7 @@ from typing import Any  # noqa:F401
 from typing import Optional  # noqa:F401
 
 from ddtrace import config
+from ddtrace.internal._core import MessageBus
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -129,76 +130,24 @@ log = logging.getLogger(__name__)
 
 
 _CURRENT_CONTEXT = None
-_EVENT_HUB = None
 ROOT_CONTEXT_ID = "__root"
+_EVENT_HUB = contextvars.ContextVar("EventHub_var", default=MessageBus())
 
 
-class EventHub:
-    def __init__(self):
-        self.reset()
-
-    def has_listeners(self, event_id):
-        # type: (str) -> bool
-        return event_id in self._listeners
-
-    def on(self, event_id, callback):
-        # type: (str, Callable) -> None
-        if callback not in self._listeners[event_id]:
-            self._listeners[event_id].insert(0, callback)
-
-    def reset(self):
-        if hasattr(self, "_listeners"):
-            del self._listeners
-        self._listeners = defaultdict(list)
-
-    def dispatch(self, event_id, args, *other_args):
-        # type: (...) -> Tuple[List[Optional[Any]], List[Optional[Exception]]]
-        if not isinstance(args, list):
-            args = [args] + list(other_args)
-        else:
-            if other_args:
-                raise TypeError(
-                    "When the first argument expected by the event handler is a list, all arguments "
-                    "must be passed in a list. For example, use dispatch('foo', [[l1, l2], arg2]) "
-                    "instead of dispatch('foo', [l1, l2], arg2)."
-                )
-        results = []
-        exceptions = []
-        for listener in self._listeners.get(event_id, []):
-            result = None
-            exception = None
-            try:
-                result = listener(*args)
-            except Exception as exc:
-                exception = exc
-                if config._raise:
-                    raise
-            results.append(result)
-            exceptions.append(exception)
-        return results, exceptions
-
-
-_EVENT_HUB = contextvars.ContextVar("EventHub_var", default=EventHub())
-
-
-def has_listeners(event_id):
-    # type: (str) -> bool
+def has_listeners(event_id: str) -> bool:
     return _EVENT_HUB.get().has_listeners(event_id)  # type: ignore
 
 
-def on(event_id, callback):
-    # type: (str, Callable) -> None
+def on(event_id: str, callback: Callable[..., Any]) -> None:
     return _EVENT_HUB.get().on(event_id, callback)  # type: ignore
 
 
-def reset_listeners():
-    # type: () -> None
+def reset_listeners() -> None:
     _EVENT_HUB.get().reset()  # type: ignore
 
 
-def dispatch(event_id, args, *other_args):
-    # type: (...) -> Tuple[List[Optional[Any]], List[Optional[Exception]]]
-    return _EVENT_HUB.get().dispatch(event_id, args, *other_args)  # type: ignore
+def dispatch(event_id: str, args: tuple[Any, ...]) -> Tuple[List[Any], List[Exception]]:
+    return _EVENT_HUB.get().dispatch(event_id, args)  # type: ignore
 
 
 class ExecutionContext:
