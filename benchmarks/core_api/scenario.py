@@ -14,7 +14,7 @@ class CoreAPIScenario(bm.Scenario):
         # Activate a number of no-op listeners for known events
         for _ in range(self.listeners):
 
-            def listener(_):
+            def listener(*args):
                 pass
 
             core.on(self.CUSTOM_EVENT_NAME, listener)
