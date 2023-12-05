@@ -105,20 +105,12 @@ import logging
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Optional
-from typing import Callable
 
 if TYPE_CHECKING:
     from ddtrace.span import Span  # noqa:F401
 
 from ddtrace import config
-from ddtrace.internal._core.message_bus import (
-    has_listeners,
-    on,
-    on_all,
-    reset as reset_listeners,
-    dispatch,
-    dispatch_with_results,
-)  # noqa F401
+from ddtrace.internal._core import message_bus
 
 
 try:
@@ -132,6 +124,13 @@ log = logging.getLogger(__name__)
 
 _CURRENT_CONTEXT = None
 ROOT_CONTEXT_ID = "__root"
+
+# Re-expose message_bus functions to keep the original API the same
+has_listeners = message_bus.has_listeners
+on = message_bus.on
+reset_listeners = message_bus.reset
+dispatch = message_bus.dispatch
+dispatch_with_results = message_bus.dispatch_with_results
 
 
 class ExecutionContext:
