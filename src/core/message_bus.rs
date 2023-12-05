@@ -58,20 +58,12 @@ impl MessageBus {
         event_id: String,
         args: &PyTuple,
     ) -> PyResult<(&'py PyList, &'py PyList)> {
-        let mut results = vec![];
-        let mut exceptions = vec![];
+        let mut results: Vec<PyAny> = vec![];
+        let mut exceptions: Vec<PyErr> = vec![];
 
         if let Some(v) = self.listeners.get(&event_id) {
             for f in v {
-                let res = f.call1(py, args);
-                if let Err(e) = res {
-                    if self.raise_errors {
-                        return Err(e);
-                    }
-                    exceptions.push(e);
-                } else if let Ok(r) = res {
-                    results.push(r);
-                }
+                f.call1(py, args)?;
             }
         }
 
