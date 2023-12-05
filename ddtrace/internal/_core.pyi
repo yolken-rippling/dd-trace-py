@@ -14,5 +14,5 @@ class MessageBus:
     def remove(self, event_id: str, callback: Callable[[tuple[Any, ...]], Any]) -> None:
         """Remove the listener ``callback`` for the provided ``event_id``"""
 
-    def dispatch(self, event_id: str, args: tuple[Any, ...]) -> None:
+    def dispatch(self, event_id: str, args: tuple[Any, ...]) -> tuple[list[Any], list[Exception]]:
         """Call all listeners of ``event_id`` with the provided ``args``"""

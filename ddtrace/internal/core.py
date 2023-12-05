@@ -125,23 +125,23 @@ log = logging.getLogger(__name__)
 
 _CURRENT_CONTEXT = None
 ROOT_CONTEXT_ID = "__root"
-_EVENT_HUB = contextvars.ContextVar("EventHub_var", default=MessageBus(config._raise))
+_EVENT_HUB = MessageBus(config._raise)
 
 
 def has_listeners(event_id: str) -> bool:
-    return _EVENT_HUB.get().has_listeners(event_id)  # type: ignore
+    return _EVENT_HUB.has_listeners(event_id)
 
 
 def on(event_id: str, callback: Callable[..., Any]) -> None:
-    return _EVENT_HUB.get().on(event_id, callback)  # type: ignore
+    return _EVENT_HUB.on(event_id, callback)
 
 
 def reset_listeners() -> None:
-    _EVENT_HUB.get().reset()  # type: ignore
+    _EVENT_HUB.reset()  # type: ignore
 
 
 def dispatch(event_id: str, args: tuple[Any, ...]) -> tuple[list[Any], list[Exception]]:
-    return _EVENT_HUB.get().dispatch(event_id, args)  # type: ignore
+    return _EVENT_HUB.dispatch(event_id, args)
 
 
 class ExecutionContext:
