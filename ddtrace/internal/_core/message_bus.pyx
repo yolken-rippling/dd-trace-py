@@ -1,3 +1,4 @@
+import cython
 from cpython cimport *
 
 from ddtrace import config
@@ -23,6 +24,7 @@ cpdef void remove(event_id: str, listener: callable):
     _listeners[event_id].remove(listener)
 
 
+@cython.nonecheck(False)
 cdef inline void _call_all_listeners(event_id: str, args: tuple):
     for hook in _all_listeners:
         try:
@@ -31,13 +33,15 @@ cdef inline void _call_all_listeners(event_id: str, args: tuple):
             if config._raise:
                 raise
 
+@cython.nonecheck(False)
 cpdef void dispatch(event_id: str, args: tuple):
     _call_all_listeners(event_id, args)
 
     if event_id not in _listeners:
         return
 
-    for hook in _listeners[event_id]:
+    cdef set hooks = _listeners[event_id]
+    for hook in hooks:
         try:
             hook(*args)
         except Exception:
@@ -45,6 +49,7 @@ cpdef void dispatch(event_id: str, args: tuple):
                 raise
 
 
+@cython.nonecheck(False)
 cpdef tuple[list, list] dispatch_with_results(event_id: str, args: tuple):
     # Do not add all listener results or exceptions to results
     _call_all_listeners(event_id, args)
@@ -52,9 +57,10 @@ cpdef tuple[list, list] dispatch_with_results(event_id: str, args: tuple):
     if event_id not in _listeners:
         return [], []
 
-    results = []
-    exceptions = []
-    for hook in _listeners[event_id]:
+    cdef list results = []
+    cdef list exceptions = []
+    cdef set hooks = _listeners[event_id]
+    for hook in hooks:
         try:
             results.append(hook(*args))
             exceptions.append(None)
@@ -70,5 +76,6 @@ cpdef void reset():
     _listeners = {}
     _all_listeners = set()
 
+@cython.nonecheck(False)
 cpdef bool has_listeners(event_id: str):
     return _listeners.get(event_id)
