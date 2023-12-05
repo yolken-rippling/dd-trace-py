@@ -11,7 +11,7 @@ from . import config
 from .context import Context  # noqa:F401
 from .internal.logger import get_logger
 from .span import Span
-from .internal._core import MessageBus
+from .internal._core import message_bus
 
 
 log = get_logger(__name__)
@@ -32,10 +32,6 @@ class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
     * the ``activate`` method, that sets the current active ``Context``
     """
 
-    def __init__(self):
-        # type: (...) -> None
-        self._hooks = MessageBus(config._raise)
-
     @abc.abstractmethod
     def _has_active_context(self):
         pass
@@ -43,7 +39,7 @@ class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
     @abc.abstractmethod
     def activate(self, ctx):
         # type: (Optional[Union[Context, Span]]) -> None
-        self._hooks.dispatch("activate", (ctx,))
+        message_bus.dispatch("dd.context_provider.activate", (ctx,))
 
     @abc.abstractmethod
     def active(self):
@@ -59,7 +55,7 @@ class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
         :param func: The function to call when a span is activated.
                      The activated span will be passed as argument.
         """
-        self._hooks.on("activate", func)
+        message_bus.on("dd.context_provider.activate", func)
         return func
 
     def _deregister_on_activate(self, func):
@@ -71,7 +67,7 @@ class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):
         :param func: The function to stop calling when a span is activated.
         """
 
-        self._hooks.remove("activate", func)
+        message_bus.remove("dd.context_provider.activate", func)
         return func
 
     def __call__(self, *args, **kwargs):

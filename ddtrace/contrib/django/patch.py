@@ -715,7 +715,7 @@ def traced_authenticate(django, pin, func, instance, args, kwargs):
         if mode == "disabled":
             return result_user
 
-        result = core.dispatch(
+        result = core.dispatch_with_results(
             "django.auth",
             (
                 result_user,
@@ -822,7 +822,7 @@ def _patch(django):
 
 
 def wrap_wsgi_environ(wrapped, _instance, args, kwargs):
-    return core.dispatch("django.wsgi_environ", (wrapped, _instance, args, kwargs))[0][0]
+    return core.dispatch_with_results("django.wsgi_environ", (wrapped, _instance, args, kwargs))[0][0]
 
 
 def patch():

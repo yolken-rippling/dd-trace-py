@@ -111,7 +111,14 @@ if TYPE_CHECKING:
     from ddtrace.span import Span  # noqa:F401
 
 from ddtrace import config
-from ddtrace.internal._core import MessageBus
+from ddtrace.internal._core.message_bus import (
+    has_listeners,
+    on,
+    on_all,
+    reset as reset_listeners,
+    dispatch,
+    dispatch_with_results,
+)  # noqa F401
 
 
 try:
@@ -125,23 +132,6 @@ log = logging.getLogger(__name__)
 
 _CURRENT_CONTEXT = None
 ROOT_CONTEXT_ID = "__root"
-_EVENT_HUB = MessageBus(config._raise)
-
-
-def has_listeners(event_id: str) -> bool:
-    return _EVENT_HUB.has_listeners(event_id)
-
-
-def on(event_id: str, callback: Callable[..., Any]) -> None:
-    return _EVENT_HUB.on(event_id, callback)
-
-
-def reset_listeners() -> None:
-    _EVENT_HUB.reset()  # type: ignore
-
-
-def dispatch(event_id: str, args: tuple[Any, ...]) -> tuple[list[Any], list[Exception]]:
-    return _EVENT_HUB.dispatch(event_id, args)
 
 
 class ExecutionContext:
@@ -171,7 +161,7 @@ class ExecutionContext:
         return self._parents[0] if self._parents else None
 
     def end(self):
-        dispatch_result = dispatch("context.ended.%s" % self.identifier, (self,))
+        dispatch_result = dispatch_with_results("context.ended.%s" % self.identifier, (self,))
         if self._span is None:
             try:
                 _CURRENT_CONTEXT.reset(self._token)

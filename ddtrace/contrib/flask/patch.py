@@ -108,7 +108,7 @@ class _FlaskWSGIMiddleware(_DDWSGIMiddlewareBase):
         core.dispatch("flask.start_response.pre", (flask.request, ctx, config.flask, status_code, headers))
         if not core.get_item(HTTP_REQUEST_BLOCKED):
             headers_from_context = ""
-            results, exceptions = core.dispatch("flask.start_response", ("Flask",))
+            results, exceptions = core.dispatch_with_results("flask.start_response", ("Flask",))
             if not any(exceptions) and results and results[0]:
                 headers_from_context = results[0]
             if core.get_item(HTTP_REQUEST_BLOCKED):
@@ -139,7 +139,7 @@ class _FlaskWSGIMiddleware(_DDWSGIMiddlewareBase):
         request = _RequestType(environ)
 
         req_body = None
-        results, exceptions = core.dispatch(
+        results, exceptions = core.dispatch_with_results(
             "flask.request_call_modifier",
             (
                 ctx,
