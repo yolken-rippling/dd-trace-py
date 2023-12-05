@@ -12,6 +12,12 @@ cpdef void on(event_id: str, listener: callable):
     else:
         _listeners[event_id].append(listener)
 
+cpdef void remove(event_id: str, listener: callable):
+    if event_id not in _listeners:
+        return
+
+    _listeners[event_id].remove(listener)
+
 cpdef void dispatch(event_id: str, args: tuple):
     if event_id not in _listeners:
         return
