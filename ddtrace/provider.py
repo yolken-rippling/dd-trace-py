@@ -7,19 +7,22 @@ from typing import Union  # noqa:F401
 
 import six
 
-from . import config
 from .context import Context  # noqa:F401
+from .internal._core import message_bus
 from .internal.logger import get_logger
 from .span import Span
-from .internal._core import message_bus
 
 
 log = get_logger(__name__)
 
 
-_DD_CONTEXTVAR = contextvars.ContextVar("datadog_contextvar", default=None)  # type: contextvars.ContextVar[Optional[Union[Context, Span]]]
+_DD_CONTEXTVAR = contextvars.ContextVar(
+    "datadog_contextvar", default=None
+)  # type: contextvars.ContextVar[Optional[Union[Context, Span]]]
 
-_DD_CI_CONTEXTVAR = contextvars.ContextVar("datadog_civisibility_contextvar", default=None)  # type: contextvars.ContextVar[Optional[Union[Context, Span]]]
+_DD_CI_CONTEXTVAR = contextvars.ContextVar(
+    "datadog_civisibility_contextvar", default=None
+)  # type: contextvars.ContextVar[Optional[Union[Context, Span]]]
 
 
 class BaseContextProvider(six.with_metaclass(abc.ABCMeta)):

@@ -133,7 +133,9 @@ class _DDWSGIMiddlewareBase(object):
                     _, _, content = core.dispatch_with_results("wsgi.block.started", (ctx, construct_url))[0][0]
                     closing_iterable = [content]
 
-            return core.dispatch_with_results("wsgi.request.complete", (ctx, closing_iterable, self.app_is_iterator))[0][0]
+            return core.dispatch_with_results("wsgi.request.complete", (ctx, closing_iterable, self.app_is_iterator))[
+                0
+            ][0]
 
     def _traced_start_response(self, start_response, request_span, app_span, status, environ, exc_info=None):
         # type: (Callable, Span, Span, str, Dict, Any) -> None

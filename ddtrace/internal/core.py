@@ -106,10 +106,10 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import Optional
 
+
 if TYPE_CHECKING:
     from ddtrace.span import Span  # noqa:F401
 
-from ddtrace import config
 from ddtrace.internal._core import message_bus
 
 

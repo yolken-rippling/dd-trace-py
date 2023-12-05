@@ -2,6 +2,7 @@ import bm
 
 from ddtrace.internal import core
 
+
 if not hasattr(core, "dispatch_with_results"):
     core.dispatch_with_results = core.dispatch
 
