@@ -628,6 +628,11 @@ setup(
                 language="c",
             ),
             Cython.Distutils.Extension(
+                "ddtrace.internal._core.message_bus",
+                sources=["ddtrace/internal/_core/message_bus.pyx"],
+                language="c",
+            ),
+            Cython.Distutils.Extension(
                 "ddtrace.internal._tagset",
                 sources=["ddtrace/internal/_tagset.pyx"],
                 language="c",
