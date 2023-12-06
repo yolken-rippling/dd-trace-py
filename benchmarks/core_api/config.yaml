@@ -13,7 +13,7 @@ core_dispatch_listeners_and_all_listeners:
   all_listeners: 10
   set_item_count: 0
   get_item_exists: false
-core_dispatch_only all_listeners:
+core_dispatch_only_all_listeners:
   listeners: 0
   all_listeners: 10
   set_item_count: 0
@@ -53,20 +53,23 @@ context_with_data_listeners_and_all_listeners:
   all_listeners: 10
   set_item_count: 0
   get_item_exists: false
-  context_with_data_only_all_listeners:
+context_with_data_only_all_listeners:
   listeners: 10
   all_listeners: 0
   set_item_count: 0
   get_item_exists: false
 set_item:
   listeners: 0
+  all_listeners: 0
   set_item_count: 100
   get_item_exists: false
 get_item_missing:
   listeners: 0
+  all_listeners: 0
   set_item_count: 0
   get_item_exists: false
 get_item_exists:
   listeners: 0
+  all_listeners: 0
   set_item_count: 0
   get_item_exists: true

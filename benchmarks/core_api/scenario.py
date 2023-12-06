@@ -19,28 +19,27 @@ class CoreAPIScenario(bm.Scenario):
         # Activate a number of no-op listeners for known events
         for _ in range(self.listeners):
 
-            def listener(*args):
+            def listener(*_):
                 pass
 
             core.on(self.CUSTOM_EVENT_NAME, listener)
             core.on("context.started.with_data", listener)
             core.on("context.ended.with_data", listener)
 
-        if hasattr(core, "on_all"):
-            for _ in range(self.all_listeners):
+        for _ in range(self.all_listeners):
+            if hasattr(core, "on_all"):
 
-                def listener(_):
+                def all_listener(event_id, args):
                     pass
 
-                core.on_all(listener)
-        else:
-            # If we don't support "core.on_all", just double up the registered listeners to try
-            # and make the comparison semi-equal
-            for _ in range(self.all_listeners):
+                core.on_all(all_listener)
+            else:
 
-                def listener(_):
+                def listener(*_):
                     pass
 
+                # If we don't support "core.on_all", just double up the registered listeners to try
+                # and make the comparison semi-equal
                 core.on(self.CUSTOM_EVENT_NAME, listener)
                 core.on("context.started.with_data", listener)
                 core.on("context.ended.with_data", listener)
