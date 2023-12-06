@@ -72,8 +72,10 @@ pub fn dispatch(py: Python<'_>, event_id: String, args: &PyTuple) -> PyResult<()
     }
 
     let listeners = GLOBAL_LISTENERS.lock().unwrap();
-    for f in listeners.iter() {
-        f.call1(py, (event_id.clone(), args));
+    if !listeners.is_empty() {
+        for f in listeners.iter() {
+            f.call1(py, (event_id.clone(), args));
+        }
     }
 
     Ok(())
@@ -105,8 +107,10 @@ pub fn dispatch_with_results<'py>(
     }
 
     let listeners = GLOBAL_LISTENERS.lock().unwrap();
-    for f in listeners.iter() {
-        f.call1(py, (event_id.clone(), args));
+    if !listeners.is_empty() {
+        for f in listeners.iter() {
+            f.call1(py, (event_id.clone(), args));
+        }
     }
 
     Ok((results, exceptions))
