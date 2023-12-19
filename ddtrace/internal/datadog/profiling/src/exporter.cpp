@@ -187,15 +187,20 @@ UploaderBuilder::build_ptr()
     // Add the crashtracker stuff (badly)
     ddog_Vec_Tag ct_tags = ddog_Vec_Tag_new();
 
-    auto res = ddog_prof_crashtracker_init_full(
-        to_slice("dd-trace-py"),
-        to_slice(profiler_version),
-        to_slice(family),
-        &ct_tags,
-        ddog_Endpoint_agent(to_slice(url)),
-        to_slice("/home/ubuntu/dev/libdatadog/target/debug/profiling-crashtracking-receiver")
-    );
+    ddog_prof_Configuration config = {};
+    config.create_alt_stack = true;
+    config.endpoint = ddog_Endpoint_agent(to_slice(url));
+    config.path_to_receiver_binary = to_slice("/home/ubuntu/dev/libdatadog/target/debug/profiling-crashtracking-receiver");
+    config.resolve_frames_in_process = true;
+    config.resolve_frames_in_receiver = false;
 
+    ddog_prof_Metadata prof_meta = {};
+    prof_meta.family = to_slice(runtime);
+    prof_meta.profiling_library_name = to_slice("dd-trace-py");
+    prof_meta.profiling_library_version = to_slice(profiler_version);
+    prof_meta.tags = &ct_tags;
+
+    auto res = ddog_prof_crashtracker_init(config, prof_meta);
     if (res.tag == DDOG_PROF_PROFILE_RESULT_ERR) {
       auto msg = err_to_msg(&res.err, "Error starting crashtracker");
       std::cout << msg << std::endl;
