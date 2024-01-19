@@ -178,9 +178,6 @@ class Span(object):
 
     def _ignore_exception(self, exc):
         # type: (Exception) -> None
-        import pdb
-
-        pdb.set_trace()
         if self._ignored_exceptions is None:
             self._ignored_exceptions = [exc]
         else:
