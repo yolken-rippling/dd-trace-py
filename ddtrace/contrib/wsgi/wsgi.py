@@ -132,6 +132,9 @@ class _DDWSGIMiddlewareBase(object):
                 core.dispatch("wsgi.request.prepare", (ctx, start_response))
                 try:
                     closing_iterable = self.app(environ, ctx.get_item("intercept_start_response"))
+                # StopIteration should not mark span with error: https://github.com/miguelgrinberg/flask-sock/issues/64
+                except StopIteration:
+                    core.dispatch("wsgi.app.success", (ctx, closing_iterable))
                 except BaseException:
                     core.dispatch("wsgi.app.exception", (ctx,))
                     raise
