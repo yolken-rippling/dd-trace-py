@@ -289,8 +289,9 @@ def test_base_exception_in_wsgi_app_py3():
 @snapshot(wait_for_num_traces=1)
 def test_stop_iteration_in_wsgi_app_py3():
     # StopIteration should not mark span as an error: https://github.com/miguelgrinberg/flask-sock/issues/64
-    app = TestApp(wsgi.DDWSGIMiddleware(application))
-    app.get("/stopIteration")
+    with pytest.raises(StopIteration):
+        app = TestApp(wsgi.DDWSGIMiddleware(application))
+        app.get("/stopIteration")
 
 
 @pytest.mark.snapshot(

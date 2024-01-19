@@ -178,6 +178,9 @@ class Span(object):
 
     def _ignore_exception(self, exc):
         # type: (Exception) -> None
+        import pdb
+
+        pdb.set_trace()
         if self._ignored_exceptions is None:
             self._ignored_exceptions = [exc]
         else:
@@ -481,6 +484,9 @@ class Span(object):
 
         # SystemExit(0) is not an error
         if issubclass(exc_type, SystemExit) and exc_val.code == 0:
+            return
+        # StopIteration should not mark span as an error: https://github.com/miguelgrinberg/flask-sock/issues/64
+        if exc_type(StopIteration):
             return
 
         if self._ignored_exceptions and any([issubclass(exc_type, e) for e in self._ignored_exceptions]):  # type: ignore[arg-type]  # noqa:F401
