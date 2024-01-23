@@ -34,7 +34,12 @@ def raise_stop_iteration_exception(start_response):
     status = "200 OK"
     headers = [("Content-type", "text/plain")]
     start_response(status, headers)
-    raise StopIteration("StopIteration raised in wsgi app")
+
+    def g():
+        yield 13
+
+    it = g()
+    next(it), next(it)
 
 
 def application(environ, start_response):
