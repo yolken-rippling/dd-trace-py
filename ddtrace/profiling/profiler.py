@@ -339,10 +339,17 @@ class _ProfilerInstance(service.Service):
             # Wait for the export to be over: export might need collectors (e.g., for snapshot) so we can't stop
             # collectors before the possibly running flush is finished.
             if join:
-                self._scheduler.join()
+                try:
+                    self._scheduler.join()
+                except Exception as e:
+                    LOG.error("Failed to join scheduler thread: %s", e)
             if flush:
                 # Do not stop the collectors before flushing, they might be needed (snapshot)
-                self._scheduler.flush()
+                try:
+                    self._scheduler.flush()
+                except Exception as e:
+                    LOG.error("Failed to flush scheduler: %s", e)
+
 
         for col in reversed(self._collectors):
             try:
@@ -353,7 +360,10 @@ class _ProfilerInstance(service.Service):
 
         if join:
             for col in reversed(self._collectors):
-                col.join()
+                try:
+                    col.join()
+                except Exception as e:
+                    LOG.error("Failed to join collector thread: %s", e)
 
     def visible_events(self):
         return self._export_py_enabled
