@@ -34,12 +34,7 @@ def raise_stop_iteration_exception(start_response):
     status = "200 OK"
     headers = [("Content-type", "text/plain")]
     start_response(status, headers)
-
-    def g():
-        yield 13
-
-    it = g()
-    next(it), next(it)
+    next(iter([]))
 
 
 def application(environ, start_response):
