@@ -191,8 +191,8 @@ UploaderBuilder::build_ptr()
     config.create_alt_stack = true;
     config.endpoint = ddog_Endpoint_agent(to_slice(url));
     config.path_to_receiver_binary = to_slice("/home/ubuntu/dev/libdatadog/target/debug/profiling-crashtracking-receiver");
-    config.resolve_frames_in_process = true;
-    config.resolve_frames_in_receiver = false;
+    config.resolve_frames_in_process = false;
+    config.resolve_frames_in_receiver = true;
 
     ddog_prof_Metadata prof_meta = {};
     prof_meta.family = to_slice(runtime);
