@@ -12,6 +12,7 @@ from hypothesis.strategies import dictionaries
 from hypothesis.strategies import floats
 from hypothesis.strategies import integers
 from hypothesis.strategies import text
+import mock
 import msgpack
 import pytest
 
@@ -260,24 +261,37 @@ class TestEncoders(TestCase):
 
 
 @pytest.mark.parametrize("version", ["v0.3", "v0.4"])
-def test_encode_meta_struct(version):
+@pytest.mark.parametrize("supported", [True, False])
+def test_encode_meta_struct(version, supported):
     # test encoding for MsgPack format
     encoder = MSGPACK_ENCODERS[version](2 << 10, 2 << 10)
     super_span = Span(name="client.testing", trace_id=1)
-    payload = {"tttt": {"iuopç": [{"abcd": 1, "bcde": True}, {}]}, "zzzz": b"\x93\x01\x02\x03", "ZZZZ": [1, 2, 3]}
+    payload = {"tttt": {"iuopç": [{"abcd": 1, "bcde": True}, {}]}, "zzzz": "encoded", "ZZZZ": [1, 2, 3]}
 
     super_span.set_struct_tag("payload", payload)
     super_span.set_tag("payload", "meta_payload")
-    encoder.put(
-        [
-            super_span,
-            Span(name="client.testing", trace_id=1),
-        ]
-    )
 
-    spans = encoder.encode()
-    items = decode(spans)
-    assert isinstance(spans, bytes)
+    def is_it_supported():
+        print("patched")
+        return supported
+
+    @mock.patch("ddtrace.internal.agent.info", is_it_supported)
+    def get_result():
+        import ddtrace.internal.agent
+
+        print(ddtrace.internal.agent.info())
+        encoder.put(
+            [
+                super_span,
+                Span(name="client.testing", trace_id=1),
+            ]
+        )
+
+        spans = encoder.encode()
+        assert isinstance(spans, bytes)
+        return decode(spans)
+
+    items = get_result()
     assert len(items) == 1
     assert len(items[0]) == 2
     assert items[0][0][b"trace_id"] == items[0][1][b"trace_id"]

@@ -3,9 +3,9 @@ from cpython.bytearray cimport PyByteArray_CheckExact
 from libc cimport stdint
 from libc.string cimport strlen
 
-from json import dumps as json_dumps
 import threading
 from json import dumps as json_dumps
+from ddtrace.internal.agent import info
 
 from ._utils cimport PyBytesLike_Check
 
@@ -418,6 +418,7 @@ cdef class MsgpackEncoderBase(BufferedEncoder):
 
     cdef msgpack_packer pk
     cdef stdint.uint32_t _count
+    cdef bool _support_meta_struct
 
     def __cinit__(self, size_t max_size, size_t max_item_size):
         cdef int buf_size = 1024*1024
@@ -430,6 +431,10 @@ cdef class MsgpackEncoderBase(BufferedEncoder):
         self.max_item_size = max_item_size if max_item_size < max_size else max_size
         self._lock = threading.RLock()
         self._reset_buffer()
+        try:
+            self._support_meta_struct = info().get("span_meta_structs", False)
+        except Exception:
+            self._support_meta_struct = False
 
     def __dealloc__(self):
         PyMem_Free(self.pk.buf)
@@ -675,6 +680,12 @@ cdef class MsgpackEncoderV03(MsgpackEncoderBase):
         cdef int has_span_type
         cdef int has_meta
         cdef int has_metrics
+
+
+        if span._meta_struct and not self._support_meta_struct:
+            for k, v in span._meta_struct.items():
+                span._meta[f"_dd.{k}.json"] = json_dumps(v, separators=(",", ":"))
+            span._meta_struct.clear()
 
         has_error = <bint> (span.error != 0)
         has_span_type = <bint> (span.span_type is not None)

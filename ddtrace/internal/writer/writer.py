@@ -13,6 +13,7 @@ from typing import Optional  # noqa:F401
 from typing import TextIO  # noqa:F401
 
 import ddtrace
+from ddtrace.internal import agent
 from ddtrace.internal.utils.retry import fibonacci_backoff_with_jitter
 from ddtrace.settings import _config as config
 from ddtrace.settings.asm import config as asm_config
@@ -487,6 +488,12 @@ class AgentWriter(HTTPWriter):
                 "There is a known compatibility issue with v0.5 API and Windows, "
                 "please see https://github.com/DataDog/dd-trace-py/issues/4829 for more details."
             )
+
+        self._support_meta_struct = self._api_version == "v0.4"
+        try:
+            self._support_meta_struct = self._support_meta_struct and agent.info().get("meta_struct", False)
+        except Exception:
+            self._support_meta_struct = False
 
         buffer_size = buffer_size or config._trace_writer_buffer_size
         max_payload_size = max_payload_size or config._trace_writer_payload_size
