@@ -383,6 +383,7 @@ class AppSecSpanProcessor(SpanProcessor):
 
             # Right now, we overwrite any value that could be already there. We need to reconsider when ASM/AppSec's
             # specs are updated.
+            log.warning(">>> WAF RESULT DATA: %s", repr(waf_results.data))
             _asm_manual_keep(span)
             if span.get_tag(ORIGIN_KEY) is None:
                 span.set_tag_str(ORIGIN_KEY, APPSEC.ORIGIN_VALUE)
