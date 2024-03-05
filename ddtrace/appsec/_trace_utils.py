@@ -23,6 +23,7 @@ def _asm_manual_keep(span: Span) -> None:
     from ddtrace.internal.constants import SAMPLING_DECISION_TRACE_TAG_KEY
     from ddtrace.internal.sampling import SamplingMechanism
 
+    log.warning("MANUAL KEEP TAG SET")
     span.set_tag(constants.MANUAL_KEEP_KEY)
     # set decision maker to ASM = -5
     span.set_tag_str(SAMPLING_DECISION_TRACE_TAG_KEY, "-%d" % SamplingMechanism.APPSEC)
