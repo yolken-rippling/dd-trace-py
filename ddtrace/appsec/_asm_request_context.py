@@ -168,9 +168,9 @@ def set_value(category: str, address: str, value: Any) -> None:
     asm_context_attr = getattr(env, category, None)
     if asm_context_attr is not None:
         asm_context_attr[address] = value
-        log.warning(">>> set ", category, address, value)
+        log.warning(">>> set %s %s %s", category, address, repr(value))
     else:
-        log.warning(">>> not set ", category, address, value)
+        log.warning(">>> not set %s %s %s", category, address, repr(value))
 
 
 def set_headers_response(headers: Any) -> None:
