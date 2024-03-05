@@ -163,14 +163,14 @@ class _DataHandler:
 def set_value(category: str, address: str, value: Any) -> None:
     env = _get_asm_context()
     if not env.active:
-        log.debug("setting %s address %s with no active asm context", category, address)
+        log.warning("setting %s address %s with no active asm context", category, address)
         return
     asm_context_attr = getattr(env, category, None)
     if asm_context_attr is not None:
         asm_context_attr[address] = value
-        log.debug(">>> set ", category, address, value)
+        log.warning(">>> set ", category, address, value)
     else:
-        log.debug(">>> not set ", category, address, value)
+        log.warning(">>> not set ", category, address, value)
 
 
 def set_headers_response(headers: Any) -> None:
