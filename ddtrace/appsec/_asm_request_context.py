@@ -168,7 +168,9 @@ def set_value(category: str, address: str, value: Any) -> None:
     asm_context_attr = getattr(env, category, None)
     if asm_context_attr is not None:
         asm_context_attr[address] = value
-        log.warning(">>> set %s %s %s", category, address, repr(value))
+        import random
+
+        log.warning(">>> set %s %s %s %s", category, address, repr(value), hex(random.randint(0, 1 << 32 - 1)))
     else:
         log.warning(">>> not set %s %s %s", category, address, repr(value))
 
