@@ -153,6 +153,7 @@ class _DataHandler:
             if env is not None and env.callbacks is not None and env.callbacks.get(_CONTEXT_CALL):
                 callbacks += env.callbacks.get(_CONTEXT_CALL)
             if callbacks:
+                log.warning(">>> finalise %s", str(len(callbacks)))
                 if env is not None:
                     for function in callbacks:
                         function(env)
