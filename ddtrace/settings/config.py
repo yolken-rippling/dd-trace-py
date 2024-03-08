@@ -277,6 +277,11 @@ def _default_config():
             default=True,
             envs=[("DD_TRACE_ENABLED", asbool)],
         ),
+        "_trace_span_origin_enabled": _ConfigItem(
+            name="trace_span_origin_enabled",
+            default=True,
+            envs=[("DD_TRACE_SPAN_ORIGIN_ENABLED", asbool)],
+        ),
         "_trace_sample_rate": _ConfigItem(
             name="trace_sample_rate",
             default=1.0,
