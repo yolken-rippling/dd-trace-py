@@ -11,6 +11,7 @@ to be run at specific points during pytest execution. The most important hooks u
         expected failures.
 
 """
+import pathlib
 from doctest import DocTest
 import json
 import re
@@ -63,6 +64,9 @@ from ddtrace.internal.ci_visibility.utils import take_over_logger_stream_handler
 from ddtrace.internal.constants import COMPONENT
 from ddtrace.internal.logger import get_logger
 
+from ddtrace.internal.coverage.code import ModuleCodeCollector
+
+from ddtrace.internal.coverage._collector import Collector
 
 PATCH_ALL_HELP_MSG = "Call ddtrace.patch_all before running tests."
 
@@ -695,7 +699,7 @@ def pytest_runtest_protocol(item, nextitem):
         resource=item.nodeid,
         span_type=SpanTypes.TEST,
         activate=True,
-    ) as span:
+    ) as span, ModuleCodeCollector.get_first_collector().collect() as covdata:
         span.set_tag_str(COMPONENT, "pytest")
         span.set_tag_str(SPAN_KIND, KIND)
         span.set_tag_str(test.FRAMEWORK, FRAMEWORK)
@@ -813,6 +817,10 @@ def pytest_runtest_protocol(item, nextitem):
                     _mark_test_status(pytest_package_item, test_module_span)
                     test_module_span.finish()
 
+        # breakpoint()
+        # print("ROMAIN HI")
+        covdata.persist_coverage()
+
         if (
             nextitem is None
             and _CIVisibility._instance._collect_coverage_enabled
@@ -821,10 +829,16 @@ def pytest_runtest_protocol(item, nextitem):
             _stop_coverage(pytest)
 
 
+
 def pytest_load_initial_conftests(early_config, parser, args):
-    from ddtrace.internal.coverage.code import ModuleCodeCollector
+
+    input_path = pathlib.Path("/Users/romain.komorn/scratch/starlette")
+
+    my_collector = Collector(input_path)
 
     ModuleCodeCollector.install()
+    ModuleCodeCollector.add_collector(my_collector)
+    ModuleCodeCollector.add_input_path(input_path)
 
 
 @pytest.hookimpl(hookwrapper=True)

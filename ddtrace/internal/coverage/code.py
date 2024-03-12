@@ -9,6 +9,8 @@ from types import FunctionType
 from types import ModuleType
 import typing as t
 
+import bitarray
+
 from ddtrace.internal.injection import inject_hooks
 from ddtrace.internal.module import BaseModuleWatchdog
 from ddtrace.internal.module import register_run_module_transformer
@@ -101,6 +103,8 @@ class ModuleCodeCollector(BaseModuleWatchdog):
         super().__init__()
         self.lines = defaultdict(set)
         self.covered = defaultdict(set)
+        self._collectors = []
+        self._input_paths = []
 
         import atexit
 
@@ -109,40 +113,91 @@ class ModuleCodeCollector(BaseModuleWatchdog):
         # Replace the built-in exec function with our own
         __builtins__["exec"] = self._exec
 
-    def hook(self, _arg):
-        frame = sys._getframe(1)
-        code = frame.f_code
-        path = str(Path(code.co_filename).resolve().relative_to(Path.cwd()))
-        if frame.f_lineno in self.covered[path]:
-            # This line has already been covered
-            return
+    def _gen_hook_closure(self, collector, file_path, line_num):
+        file_idx = collector.record_executable_line(file_path, line_num)
 
-        # Take note of the line that was covered
-        self.covered[path].add(frame.f_lineno)
+        def hook(_arg):
+            collector.record_executed_line(file_idx, line_num)
+        return hook
+
+    @classmethod
+    def add_collector(cls, collector):
+        print(f"ADDING COLLECTOR {collector=}")
+        cls._instance._collectors.append(collector)
+
+    @classmethod
+    def get_first_collector(cls):
+        return cls._instance._collectors[0]
+
+    @classmethod
+    def add_input_path(cls, path):
+        print(f"ADDING INPUT PATH {path=}")
+        cls._instance._input_paths.append(path)
+
+    # def hook(self, _arg):
+    #     frame = sys._getframe(1)
+    #     code = frame.f_code
+    #     path = str(Path(code.co_filename).resolve().relative_to(Path.cwd()))
+    #     if frame.f_lineno in self.covered[path]:
+    #         # This line has already been covered
+    #         return
+    #
+    #     # Take note of the line that was covered
+    #     self.covered[path].add(frame.f_lineno)
 
     def report(self):
         print("COVERAGE REPORT:")
-        for path, lines in sorted(self.lines.items()):
-            n_covered = len(self.covered[path])
-            if n_covered == 0:
-                continue
-            print(f"{path:60s} {int(n_covered/len(lines) * 100)}%")
+        for collector in self._collectors:
+            from pprint import pprint
+            pprint(collector._persisted_coverages)
 
     def transform(self, code: CodeType, module: ModuleType) -> CodeType:
         return module_code_collector(code, module)
 
     def after_import(self, module: ModuleType) -> None:
+        _known_filenames_to_paths = {}
+        _known_kept_paths = set()
+        _known_rejected_paths = set()
+
         for code in CodeDiscovery.from_module(module).code_objects():
-            path = Path(code.co_filename).resolve()
-            # TODO: Remove these hardcoded paths
-            if not (path.is_relative_to(Path.cwd() / "starlette") or path.is_relative_to(Path.cwd() / "tests")):
-                continue
+            if code.co_filename in _known_filenames_to_paths:
+                path = _known_filenames_to_paths[code.co_filename]
+            else:
+                path = Path(code.co_filename).resolve()
+                _known_filenames_to_paths[code.co_filename] = path
+
+            if path in _known_rejected_paths:
+                # print(f"KNOWN REJECTED PATH {path=}")
+                return
+
+            if path not in _known_kept_paths:
+                keep_path = False
+                for input_path in self._input_paths:
+                    try:
+                        if path.is_relative_to(input_path):
+                            # print(f"KEEPING PATH {path=}")
+                            keep_path = True
+                            _known_kept_paths.add(path)
+                            break
+                    except ValueError:
+                        #
+                        pass
+
+                if not keep_path:
+                    # print(f"REJECT PATH {path=}")
+                    _known_rejected_paths.add(path)
+                    return
+            # else:
+                # print(f"KNOWN KEPT PATH {path=}")
 
             lines = set(get_lines(code))
 
-            self.lines[str(path.relative_to(Path.cwd()))] |= lines
+            # self.lines[str(path.relative_to(Path.cwd()))] |= lines
+            self.lines[path] |= lines
 
-            hooks = [(self.hook, line, None) for line in lines]
+            # hooks = [(self.hook, line, None) for line in lines]
+
+            hooks = [(self._gen_hook_closure(collector, path, line), line, None) for collector in self._collectors for line in lines]
 
             for f in functions_for_code(code):
                 inject_hooks(f, hooks)
