@@ -13,6 +13,7 @@ to be run at specific points during pytest execution. The most important hooks u
 """
 from doctest import DocTest
 import json
+import pathlib
 import re
 from typing import Dict  # noqa:F401
 
@@ -60,7 +61,10 @@ from ddtrace.internal.ci_visibility.utils import _generate_fully_qualified_modul
 from ddtrace.internal.ci_visibility.utils import _generate_fully_qualified_test_name
 from ddtrace.internal.ci_visibility.utils import get_relative_or_absolute_path_for_path
 from ddtrace.internal.ci_visibility.utils import take_over_logger_stream_handler
+
 from ddtrace.internal.constants import COMPONENT
+from ddtrace.internal.coverage._collector import Collector
+from ddtrace.internal.coverage.code import ModuleCodeCollector
 from ddtrace.internal.logger import get_logger
 
 
@@ -464,6 +468,9 @@ def pytest_sessionstart(session):
             service=_CIVisibility._instance._service,
             span_type=SpanTypes.TEST,
         )
+        collector = ModuleCodeCollector.get_first_collector()
+        # breakpoint()
+        collector.start()
         test_session_span.set_tag_str(COMPONENT, "pytest")
         test_session_span.set_tag_str(SPAN_KIND, KIND)
         test_session_span.set_tag_str(test.FRAMEWORK, FRAMEWORK)
@@ -498,6 +505,10 @@ def pytest_sessionstart(session):
 
 def pytest_sessionfinish(session, exitstatus):
     if _CIVisibility.enabled:
+        collector = ModuleCodeCollector.get_first_collector()
+        collector.stop()
+        collector.report_executed_lines()
+
         log.debug("CI Visibility enabled - finishing test session")
         test_session_span = _extract_span(session)
         if test_session_span is not None:
@@ -813,6 +824,10 @@ def pytest_runtest_protocol(item, nextitem):
                     _mark_test_status(pytest_package_item, test_module_span)
                     test_module_span.finish()
 
+        # breakpoint()
+        # print("ROMAIN HI")
+        # covdata.persist_coverage()
+
         if (
             nextitem is None
             and _CIVisibility._instance._collect_coverage_enabled
@@ -822,9 +837,13 @@ def pytest_runtest_protocol(item, nextitem):
 
 
 def pytest_load_initial_conftests(early_config, parser, args):
-    from ddtrace.internal.coverage.code import ModuleCodeCollector
+    input_path = pathlib.Path.cwd()
+
+    my_collector = Collector(input_path)
 
     ModuleCodeCollector.install()
+    ModuleCodeCollector.add_collector(my_collector)
+    ModuleCodeCollector.add_input_path(input_path)
 
 
 @pytest.hookimpl(hookwrapper=True)

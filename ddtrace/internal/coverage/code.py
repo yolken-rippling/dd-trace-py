@@ -1,4 +1,3 @@
-from collections import defaultdict
 from collections import deque
 from dis import findlinestarts
 from types import CodeType
@@ -34,12 +33,8 @@ class ModuleCodeCollector(BaseModuleWatchdog):
     def __init__(self):
         super().__init__()
         self.seen = set()
-        self.lines = defaultdict(set)
-        self.covered = defaultdict(set)
-
-        import atexit
-
-        atexit.register(self.report)  # Quick and dirty coverage report
+        self._collectors = []
+        self._input_paths = []
 
         # Replace the built-in exec function with our own in the pytest globals
         try:
@@ -49,28 +44,44 @@ class ModuleCodeCollector(BaseModuleWatchdog):
         except ImportError:
             pass
 
-    def hook(self, arg):
-        path, line = arg
-        if line in self.covered[path]:
-            # This line has already been covered
-            return
+    def _gen_hook_closure(self, collector, file_path, line_num):
+        file_idx = collector.record_executable_line(file_path, line_num)
 
-        # Take note of the line that was covered
-        self.covered[path].add(line)
+        def hook(_arg):
+            collector.record_executed_line(file_idx, line_num)
 
-    def report(self):
-        print("COVERAGE REPORT:")
-        for path, lines in sorted(self.lines.items()):
-            n_covered = len(self.covered[path])
-            if n_covered == 0:
-                continue
-            print(f"{path:60s} {int(n_covered/len(lines) * 100)}%")
+        return hook
+
+    @classmethod
+    def add_collector(cls, collector):
+        print(f"ADDING COLLECTOR {collector=}")
+        cls._instance._collectors.append(collector)
+
+    @classmethod
+    def get_first_collector(cls):
+        return cls._instance._collectors[0]
+
+    @classmethod
+    def add_input_path(cls, path):
+        print(f"ADDING INPUT PATH {path=}")
+        cls._instance._input_paths.append(path)
 
     def transform(self, code: CodeType, _module: ModuleType) -> CodeType:
         code_path = Path(code.co_filename).resolve()
-        # TODO: Remove hardcoded paths
-        if all(not code_path.is_relative_to(CWD / folder) for folder in ("starlette", "tests")):
-            # Not a code object we want to instrument
+
+        keep_path = False
+        for input_path in self._input_paths:
+            try:
+                if code_path.is_relative_to(input_path):
+                    # print(f"KEEPING PATH {path=}")
+                    keep_path = True
+                    break
+            except ValueError:
+                #
+                pass
+
+        if not keep_path:
+            # print(f"REJECT PATH {path=}")
             return code
 
         # Transform the module code object
@@ -91,12 +102,17 @@ class ModuleCodeCollector(BaseModuleWatchdog):
 
         self.seen.add(code)
 
-        path = str(Path(code.co_filename).resolve().relative_to(CWD))
+        path = Path(code.co_filename).resolve()
         lines = set(get_lines(code))
 
-        self.lines[path] |= lines
-
-        new_code, failed = inject_hooks_in_code(code, [(self.hook, line, (path, line)) for line in lines])
+        new_code, failed = inject_hooks_in_code(
+            code,
+            [
+                (self._gen_hook_closure(collector, path, line), line, (path, line))
+                for collector in self._collectors
+                for line in lines
+            ],
+        )
 
         assert not failed, "All lines instrumented"
 
