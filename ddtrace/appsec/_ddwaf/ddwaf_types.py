@@ -230,6 +230,7 @@ ddwaf_object._fields_ = [
 
 
 class ddwaf_result(ctypes.Structure):
+    instance_count = 0
     _fields_ = [
         ("timeout", ctypes.c_bool),
         ("events", ddwaf_object),
@@ -237,6 +238,11 @@ class ddwaf_result(ctypes.Structure):
         ("derivatives", ddwaf_object),
         ("total_runtime", ctypes.c_uint64),
     ]
+
+    def __init__(self):
+        super().__init__()
+        ddwaf_result.instance_count += 1
+        print(">>>> instance_count", ddwaf_result.instance_count)
 
     def __repr__(self):
         return "total_runtime=%r, events=%r, timeout=%r, action=[%r]" % (
@@ -248,6 +254,7 @@ class ddwaf_result(ctypes.Structure):
 
     def __del__(self):
         try:
+            ddwaf_result.instance_count -= 1
             ddwaf_result_free(self)
         except TypeError:
             pass
