@@ -332,7 +332,7 @@ class AppSecSpanProcessor(SpanProcessor):
 
                 stack_trace_id = report_stack("exploit detected", span, kwargs.get("crop_trace"))
                 for rule in waf_results.data:
-                    rule["stack_trace_id"] = stack_trace_id
+                    rule["stack_id"] = stack_trace_id
 
         _asm_request_context.set_waf_telemetry_results(
             self._ddwaf.info.version, bool(waf_results.data), bool(blocked), waf_results.timeout
