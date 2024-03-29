@@ -60,7 +60,7 @@ class ASMConfig(Env):
 
     # internal state of the API security Manager service.
     # updated in API Manager enable/disable
-    _api_security_active = False
+    _api_security_active = True
     _asm_libddwaf = build_libddwaf_filename()
     _asm_libddwaf_available = os.path.exists(_asm_libddwaf)
 
