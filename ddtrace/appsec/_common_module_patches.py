@@ -28,7 +28,7 @@ def wrapped_open_CFDDB7ABBA9081B6(original_open_callable, instance, args, kwargs
     """
     wrapper for open file function
     """
-
+    print(">>> wrapped_open_CFDDB7ABBA9081B6", args)
     if asm_config._iast_enabled:
         # LFI sink to be added
         pass
@@ -44,7 +44,8 @@ def wrapped_open_CFDDB7ABBA9081B6(original_open_callable, instance, args, kwargs
 
         filename = args[0] if args else kwargs.get("file", None)
         if filename and in_context():
-            call_waf_callback({"LFI_ADDRESS": filename}, crop_trace="wrapped_open_CFDDB7ABBA9081B6")
+            res = call_waf_callback({"LFI_ADDRESS": filename}, crop_trace="wrapped_open_CFDDB7ABBA9081B6")
+            print(f">>> res: {res}")
             # DEV: Next part of the exploit prevention feature: add block here
     return original_open_callable(*args, **kwargs)
 
