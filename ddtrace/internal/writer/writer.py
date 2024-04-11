@@ -13,6 +13,7 @@ from typing import Optional  # noqa:F401
 from typing import TextIO  # noqa:F401
 
 import ddtrace
+from ddtrace.internal._core import data_pipeline
 from ddtrace.internal.utils.retry import fibonacci_backoff_with_jitter
 from ddtrace.settings import _config as config
 from ddtrace.settings.asm import config as asm_config
@@ -177,6 +178,7 @@ class HTTPWriter(periodic.PeriodicService, TraceWriter):
         self._drop_sma = SimpleMovingAverage(DEFAULT_SMA_WINDOW)
         self._sync_mode = sync_mode
         self._conn = None  # type: Optional[ConnectionType]
+        self._trace_exporter: Optional[data_pipeline.TraceExporter] = None
         # The connection has to be locked since there exists a race between
         # the periodic thread of HTTPWriter and other threads that might
         # force a flush with `flush_queue()`.
@@ -236,6 +238,25 @@ class HTTPWriter(periodic.PeriodicService, TraceWriter):
                 self._conn.close()
                 self._conn = None
 
+    def _put_v04(self, data: bytes, num_traces: int) -> Response:
+        sw = StopWatch()
+        sw.start()
+        if not self._trace_exporter:
+            log.debug("creating new trace exporter to %s", self.intake_url)
+            self._trace_exporter = data_pipeline.TraceExporter(self.intake_url)
+
+        try:
+            body: bytes = self._trace_exporter.send(data, num_traces)
+            t = sw.elapsed()
+            if t >= self.interval:
+                log_level = logging.WARNING
+            else:
+                log_level = logging.DEBUG
+            log.log(log_level, "sent %s in %.5fs to trace agent", _human_size(len(data)), t)
+            return Response(status=200, reason="OK", body=body, msg="OK")
+        except Exception:
+            raise
+
     def _put(self, data, headers, client, no_trace):
         # type: (bytes, Dict[str, str], WriterClientBase, bool) -> Response
         sw = StopWatch()
@@ -282,11 +303,13 @@ class HTTPWriter(periodic.PeriodicService, TraceWriter):
 
     def _send_payload(self, payload, count, client):
         # type: (...) -> Response
-        headers = self._get_finalized_headers(count, client)
-
         self._metrics_dist("http.requests")
 
-        response = self._put(payload, headers, client, no_trace=True)
+        if client.ENDPOINT == "v0.4/traces":
+            response = self._put_v04(payload, count)
+        else:
+            headers = self._get_finalized_headers(count, client)
+            response = self._put(payload, headers, client, no_trace=True)
 
         if response.status >= 400:
             self._metrics_dist("http.errors", tags=["type:%s" % response.status])
