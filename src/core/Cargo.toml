@@ -1,0 +1,17 @@
+[package]
+name = "ddtrace-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pyo3 = { version = "0.21.1", features = ["extension-module"] }
+libdd_data_pipeline = { git = "https://github.com/DataDog/libdatadog.git", branch = "main", package = "data-pipeline" }
+url = { version = "2.5.0" }
+
+[build-dependencies]
+pyo3-build-config = "0.21.1"
+
+[lib]
+name = "_core"
+path = "lib.rs"
+crate-type = ["cdylib"]
