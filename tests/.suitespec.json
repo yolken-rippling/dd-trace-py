@@ -42,6 +42,7 @@
             "ddtrace/internal/atexit.py",
             "ddtrace/internal/compat.py",
             "ddtrace/internal/core/*",
+            "ddtrace/internal/_core/*",
             "ddtrace/internal/datadog/__init__.py",
             "ddtrace/internal/debug.py",
             "ddtrace/internal/dogstatsd.py",
