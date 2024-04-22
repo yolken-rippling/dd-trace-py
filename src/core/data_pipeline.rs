@@ -35,8 +35,9 @@ impl TraceExporterPy {
                 .ok_or(PyValueError::new_err("Invalid host"))?;
             let port = url.port().ok_or(PyValueError::new_err("Invalid port"))?;
 
-            let mut builder = TraceExporterBuilder::default();
+            let builder = TraceExporterBuilder::default();
             let exporter = builder
+                .set_proxy(true)
                 .set_host(host)
                 .set_port(port)
                 .set_tracer_version(
@@ -75,10 +76,11 @@ impl TraceExporterPy {
     fn send<'py>(
         &self,
         py: Python<'py>,
-        data: &[u8],
+        data: Bound<'py, PyBytes>,
         trace_count: usize,
     ) -> PyResult<Bound<'py, PyBytes>> {
-        let result = self.exporter.send(data, trace_count);
+        let bytes: &[u8] = data.as_bytes();
+        let result = py.allow_threads(|| self.exporter.send(bytes, trace_count));
         if let Err(e) = result {
             return Err(PyValueError::new_err(format!("{:?}", e)));
         }
