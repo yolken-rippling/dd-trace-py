@@ -69,6 +69,13 @@ class CIVisibilityEncoderV01(BufferedEncoder):
     def _build_payload(self, traces):
         normalized_spans = [self._convert_span(span, trace[0].context.dd_origin) for trace in traces for span in trace]
         self._metadata = {k: v for k, v in self._metadata.items() if k in self.ALLOWED_METADATA_KEYS}
+        # self._metadata["breaking_nested_dict"] = {
+        #     "goodint": (2**64)-1,
+        #     "baddict": {"badint": 2**65},
+        #     "badlist": [1, 2**65, 3],
+        #     "bad_nested_list": [[1, 2**65, 3], [{1: [2**65, 3]}], [1, 2**65, 3, {1: [2**65, 3]}]],
+        #     2**65: "this was a bad key",
+        # }
         # TODO: Split the events in several payloads as needed to avoid hitting the intake's maximum payload size.
         return CIVisibilityEncoderV01._pack_payload(
             {"version": self.PAYLOAD_FORMAT_VERSION, "metadata": {"*": self._metadata}, "events": normalized_spans}
@@ -76,7 +83,29 @@ class CIVisibilityEncoderV01(BufferedEncoder):
 
     @staticmethod
     def _pack_payload(payload):
-        return msgpack_packb(payload)
+        try:
+            return msgpack_packb(payload)
+        except:  # noqa: E722
+            from ddtrace.internal.logger import get_logger
+
+            log = get_logger(__name__)
+            log.error("Failed to pack payload, looking for bad int", payload, exc_info=True)
+
+            def _find_bad_int(payload, breadcrumbs):
+                breadcrumbs = breadcrumbs[:]
+                if isinstance(payload, int):
+                    if payload > 2**64:
+                        log.error("Found bad int: %s: %s", ".".join(breadcrumbs), str(payload))
+                elif isinstance(payload, dict):
+                    for k, v in payload.items():
+                        if isinstance(k, int) and k > 2**63:
+                            log.error("Found bad int dict key %s in %s", k, ".".join(breadcrumbs))
+                        _find_bad_int(v, breadcrumbs + [str(k)])
+                elif isinstance(payload, list):
+                    for idx, val in enumerate(payload):
+                        _find_bad_int(val, breadcrumbs + [f"[{idx}]"])
+
+            _find_bad_int(payload, [])
 
     def _convert_span(self, span, dd_origin):
         # type: (Span, str) -> Dict[str, Any]
