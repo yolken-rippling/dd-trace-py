@@ -288,33 +288,29 @@ cdef class MsgpackStringTable(StringTable):
         self._table = {s: idx for s, idx in self._table.items() if idx < self._next_id}
 
     cdef get_bytes(self):
-        cdef int ret
         cdef stdint.uint32_t table_size
-        cdef int offset
-        cdef int old_pos
         with self._lock:
             table_size = self._next_id
-            offset = MSGPACK_STRING_TABLE_LENGTH_PREFIX_SIZE - array_prefix_size(table_size)
-            old_pos = self.pk.length
+            # Table size
+            self.pk.buf[0] = 0xdd
+            self.pk.buf[1] = (table_size >> 24) & 0xff
+            self.pk.buf[2] = (table_size >> 16) & 0xff
+            self.pk.buf[3] = (table_size >> 8) & 0xff
+            self.pk.buf[4] = table_size & 0xff
 
-            # Update table size prefix
-            self.pk.length = offset
-            ret = msgpack_pack_array(&self.pk, table_size)
-            if ret:
-                return None
-            # Add root array size prefix
-            self.pk.length = offset = offset - 1
-            ret = msgpack_pack_array(&self.pk, 2)
-            if ret:
-                return None
-            self.pk.length = old_pos
+            # String table size
+            self.pk.buf[5] = 0xdd
+            self.pk.buf[6] = 0
+            self.pk.buf[7] = 0
+            self.pk.buf[8] = 0
+            self.pk.buf[9] = 2
 
-            return PyBytes_FromStringAndSize(self.pk.buf + offset, self.pk.length - offset)
+            return PyBytes_FromStringAndSize(self.pk.buf, self.pk.length)
 
     @property
     def size(self):
         with self._lock:
-            return self.pk.length - MSGPACK_ARRAY_LENGTH_PREFIX_SIZE + array_prefix_size(self._next_id)
+            return self.pk.length - MSGPACK_ARRAY_LENGTH_PREFIX_SIZE
 
     cdef append_raw(self, long src, Py_ssize_t size):
         cdef int res
@@ -455,26 +451,25 @@ cdef class MsgpackEncoderBase(BufferedEncoder):
 
             return self.flush()
 
-    cdef inline int _update_array_len(self):
+    cdef inline void _update_array_len(self):
         """Update traces array size prefix"""
-        cdef int offset = MSGPACK_ARRAY_LENGTH_PREFIX_SIZE - array_prefix_size(self._count)
-        cdef int old_pos = self.pk.length
-
         with self._lock:
-            self.pk.length = offset
-            msgpack_pack_array(&self.pk, self._count)
-            self.pk.length = old_pos
-            return offset
+            self.pk.buf[0] = 0xdd
+            self.pk.buf[1] = (self._count >> 24) & 0xff
+            self.pk.buf[2] = (self._count >> 16) & 0xff
+            self.pk.buf[3] = (self._count >> 8) & 0xff
+            self.pk.buf[4] = self._count & 0xff
 
     cdef get_bytes(self):
         """Return internal buffer contents as bytes object"""
-        cdef int offset = self._update_array_len()
         with self._lock:
-            return PyBytes_FromStringAndSize(self.pk.buf + offset, self.pk.length - offset)
+            self._update_array_len()
+            return PyBytes_FromStringAndSize(self.pk.buf, self.pk.length)
 
     cdef char * get_buffer(self):
         """Return internal buffer."""
-        return self.pk.buf + self._update_array_len()
+        self._update_array_len()
+        return self.pk.buf
 
     cdef void * get_dd_origin_ref(self, str dd_origin):
         raise NotImplementedError()
@@ -540,7 +535,7 @@ cdef class MsgpackEncoderBase(BufferedEncoder):
     def size(self):
         """Return the size in bytes of the encoder buffer."""
         with self._lock:
-            return self.pk.length + array_prefix_size(self._count) - MSGPACK_ARRAY_LENGTH_PREFIX_SIZE
+            return self.pk.length - MSGPACK_ARRAY_LENGTH_PREFIX_SIZE
 
     # ---- Abstract methods ----
 
