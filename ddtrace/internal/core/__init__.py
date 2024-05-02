@@ -100,17 +100,18 @@ like this::
 
 The names of these events follow the pattern ``context.[started|ended].<context_name>``.
 """
+import atexit
 from contextlib import contextmanager
 import logging
 import sys
 from typing import TYPE_CHECKING  # noqa:F401
 from typing import Any  # noqa:F401
-from typing import Callable  # noqa:F401
 from typing import Dict  # noqa:F401
 from typing import List  # noqa:F401
 from typing import Optional  # noqa:F401
-from typing import Tuple  # noqa:F401
 
+from ddtrace.internal._core import Scheduler
+from ddtrace.internal._core import Task
 from ddtrace.vendor.debtcollector import deprecate
 
 from ..utils.deprecations import DDTraceDeprecationWarning
@@ -145,6 +146,13 @@ SPAN_DEPRECATION_SUGGESTION = (
     "Please store contextual data on the ExecutionContext object using other kwargs and/or set_item()"
 )
 DEPRECATION_MEMO = set()
+
+
+_scheduler = Scheduler(auto_start=True)
+# DEV: We _must_ stop the scheduler with atexit since
+# since we cannot execute Python code when the interpreter is shutting down
+# via the Drop trait in the Rust FFI.
+atexit.register(_scheduler.stop)
 
 
 def _deprecate_span_kwarg(span):
@@ -328,3 +336,11 @@ def set_items(keys_values, span=None):
         span._local_root._set_ctx_items(keys_values)
     else:
         _CURRENT_CONTEXT.get().set_items(keys_values)  # type: ignore
+
+
+def register_task(task: Task) -> None:
+    return _scheduler.register_task(task)
+
+
+def unregister_task(task: Task) -> None:
+    return _scheduler.unregister_task(task)
