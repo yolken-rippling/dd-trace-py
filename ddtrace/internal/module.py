@@ -32,7 +32,8 @@ def _module_watchdog_audit_hook(event: str, args: t.Tuple) -> None:
         hook(event, args)
 
 
-sys.addaudithook(_module_watchdog_audit_hook)
+if sys.version_info >= (3, 8):
+    sys.addaudithook(_module_watchdog_audit_hook)
 
 
 def _add_audit_hook(hook: t.Callable[[str, t.Tuple], None]) -> None:
