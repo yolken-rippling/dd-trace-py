@@ -249,10 +249,18 @@ def run_function_from_file(item, params=None):
                 )
 
             if not is_stream_ok(out, expected_out):
-                raise AssertionError("STDOUT: Expected [%s] got [%s]" % (expected_out, out))
+                raise AssertionError(
+                    "STDOUT: Expected [%s] got [%s]"
+                    "\n=== Captured STDERR ===\n%s=== End of captured STDERR ==="
+                    % (expected_out, out.decode("utf-8"), err.decode("utf-8"))
+                )
 
             if not is_stream_ok(err, expected_err):
-                raise AssertionError("STDERR: Expected [%s] got [%s]" % (expected_err, err))
+                raise AssertionError(
+                    "STDERR: Expected [%s] got [%s]"
+                    "\n=== Captured STDOUT ===\n%s=== End of captured STDOUT ==="
+                    % (expected_err, err.decode("utf-8"), out.decode("utf-8"))
+                )
 
         return _subprocess_wrapper()
 

@@ -67,7 +67,8 @@ class PeriodicService(service.Service):
     def _stop_service(self, *args, **kwargs):
         # type: (typing.Any, typing.Any) -> None
         """Stop the periodic collector."""
-        self._worker.stop()
+        if self._worker:
+            self._worker.stop()
         super(PeriodicService, self)._stop_service(*args, **kwargs)
 
     def join(
@@ -77,6 +78,7 @@ class PeriodicService(service.Service):
         # type: (...) -> None
         if self._worker:
             self._worker.join(timeout)
+            self._worker = None
 
     @staticmethod
     def on_shutdown():
@@ -92,4 +94,5 @@ class AwakeablePeriodicService(PeriodicService):
 
     def awake(self):
         # type: (...) -> None
-        self._worker.awake()
+        if self._worker:
+            self._worker.awake()

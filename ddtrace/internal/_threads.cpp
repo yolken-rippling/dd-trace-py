@@ -384,6 +384,12 @@ PeriodicThread_join(PeriodicThread* self, PyObject* args, PyObject* kwargs)
         self->_stopped->wait(interval);
     }
 
+    // Clean up periodic thread state
+    self->_thread = nullptr;
+    self->_stopping = false;
+    self->_stopped->clear();
+    self->_started->clear();
+
     Py_RETURN_NONE;
 }
 
@@ -392,6 +398,10 @@ static PyObject*
 PeriodicThread__atexit(PeriodicThread* self, PyObject* args)
 {
     self->_atexit = true;
+
+    // We haven't started yet, or we have already stopped
+    if (self->_thread == nullptr)
+        Py_RETURN_NONE;
 
     if (PeriodicThread_stop(self, NULL) == NULL)
         return NULL;

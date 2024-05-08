@@ -119,3 +119,58 @@ def test_awakeable_periodic_service():
     awake_me.stop()
 
     assert queue == list(range(n + 1))
+
+
+def test_periodic_thread_start_stop_start():
+    queue = []
+
+    def _run_periodic():
+        queue.append(len(queue))
+
+    t = periodic.PeriodicThread(0.1, _run_periodic)
+    t.start()
+    sleep(0.2)
+    t.stop()
+    t.join(0.2)
+
+    # Ensure we have called _run_periodic at least once
+    queue_len = len(queue)
+    assert queue_len > 0
+
+    # Starting again will work after joining
+    t.start()
+    sleep(0.2)
+    t.stop()
+
+    # Ensure we have run again a least once after starting again
+    assert len(queue) > queue_len
+
+    t.join(0.2)
+
+
+def test_periodic_service_start_stop_start():
+    queue = []
+
+    class MyPeriodicService(periodic.PeriodicService):
+        def periodic(self):
+            queue.append(len(queue))
+
+    t = MyPeriodicService(0.1)
+    t.start()
+    sleep(0.2)
+    t.stop()
+    t.join(0.2)
+
+    # Ensure we have called _run_periodic at least once
+    queue_len = len(queue)
+    assert queue_len > 0
+
+    # Starting again will work after joining
+    t.start()
+    sleep(0.2)
+    t.stop()
+
+    # Ensure we have run again a least once after starting again
+    assert len(queue) > queue_len
+
+    t.join(0.2)

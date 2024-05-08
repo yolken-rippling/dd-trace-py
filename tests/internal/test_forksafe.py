@@ -316,14 +316,11 @@ def test_gevent_gunicorn_behaviour():
     assert "ddtrace.internal" in sys.modules
     assert "ddtrace.internal.periodic" in sys.modules
 
-    import atexit
-
-    from ddtrace.internal import forksafe
     from ddtrace.internal.periodic import PeriodicService
 
     class TestService(PeriodicService):
         def __init__(self):
-            super(TestService, self).__init__(interval=0.1)
+            super(TestService, self).__init__(interval=0.000001)
 
         def periodic(self):
             sys.stdout.write("T")
@@ -331,18 +328,8 @@ def test_gevent_gunicorn_behaviour():
 
     service = TestService()
     service.start()
-    atexit.register(lambda: service.stop() and service.join(1))
-
-    def restart_service():
-        global service
-        service.stop()
-        service = TestService()
-        service.start()
-
-    forksafe.register(restart_service)
 
     # ---- Application code ----
-
     import os  # noqa:F401
     import sys  # noqa:F401
 
@@ -367,5 +354,4 @@ def test_gevent_gunicorn_behaviour():
     fork_workers(3)
 
     gevent.sleep(1)
-
     exit()
