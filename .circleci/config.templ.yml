@@ -454,7 +454,6 @@ jobs:
           name: "Update the pip cache"
           command: |
             pip cache info
-            pip cache purge
             mkdir -p /tmp/pip_downloads/
             while read req;
             do
