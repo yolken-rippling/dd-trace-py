@@ -88,6 +88,7 @@ commands:
       - run:
           command: |
             echo 'export PIP_CACHE_DIR=pip_cache' >> "$BASH_ENV"
+            echo 'export PIP_VERBOSE=3' >> "$BASH_ENV"
             source "$BASH_ENV"
 
   save_coverage:
