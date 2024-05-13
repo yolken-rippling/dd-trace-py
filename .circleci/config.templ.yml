@@ -61,6 +61,7 @@ commands:
     description: "Merge and deduplicate all of the .riot/requirements/*.txt files into one"
     steps:
       - run:
+          name: "Create riot_requirements_combined.txt"
           command: |
             echo "" > riot_requirements_combined.txt.tmp
             for riot_file in .riot/requirements/*.txt
