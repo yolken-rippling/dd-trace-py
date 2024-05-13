@@ -454,15 +454,17 @@ jobs:
       - run:
           name: "Update the pip cache"
           command: |
-            pip cache info
-            mkdir -p /tmp/pip_downloads/
-            while read req;
-            do
-              py=$(echo "${req}" | awk '{print $1}')
-              req=$(echo "${req}" | awk '{$1=""; print $0}')
+            download_package() {
+              py=$(echo "$@" | awk '{print $1}')
+              req=$(echo "$@" | awk '{$1=""; print $0}')
               echo "Downloading ${req} for Python version ${py}"
               pip download --no-deps --cache-dir pip_cache --dest /tmp/pip_downloads/ --src /tmp/pip_downloads/ --progress-bar off --quiet --disable-pip-version-check --no-python-version-warning --python "python${py}" "${req}" || true
-            done < "riot_requirements_combined.txt"
+            }
+            export -f download_package
+
+            pip cache info
+            mkdir -p /tmp/pip_downloads/
+            cat "riot_requirements_combined.txt" | xargs -P 2 -n 2 -I {} bash -c 'download_package "{}"'
             pip cache info
       - save_cache:
           key: *pip-cache
