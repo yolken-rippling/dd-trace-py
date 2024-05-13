@@ -462,6 +462,7 @@ jobs:
               echo "Downloading ${req} for Python version ${py}"
               pip download --no-deps --cache-dir pip_cache --dest /tmp/pip_downloads/ --src /tmp/pip_downloads/ --progress-bar off --quiet --disable-pip-version-check --no-python-version-warning --python "python${py}" "${req}" || true
             done < "riot_requirements_combined.txt"
+            pip cache info
       - save_cache:
           key: *pip-cache
           paths:
