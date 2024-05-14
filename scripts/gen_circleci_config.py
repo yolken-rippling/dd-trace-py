@@ -28,7 +28,7 @@ def gen_required_suites(template: dict, git_selections: list) -> None:
     jobs = template["workflows"]["test"]["jobs"]
 
     # Create the base venvs
-    jobs.append("build_base_venvs")
+    jobs.append({"build_base_venvs": {"requires": ["build_pip_cache"]}})
     jobs.append("build_pip_cache")
 
     # Add the jobs

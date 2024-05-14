@@ -46,7 +46,7 @@ machine_executor: &machine_executor
 
 contrib_job_large: &contrib_job_large
   executor: ddtrace_dev
-  parallelism: 10
+  parallelism: 6
 
 contrib_job: &contrib_job
   executor: ddtrace_dev
@@ -321,6 +321,7 @@ commands:
       - restore_cache:
           keys:
             - lastsuccess-{{ .Environment.CIRCLE_BRANCH }}-<<parameters.env>>-{{ .Environment.CIRCLE_NODE_INDEX }}
+      - use_pip_cache
       - setup_hatch
       - when:
           condition:
@@ -519,6 +520,7 @@ jobs:
     parallelism: 6
     steps:
       - checkout
+      - use_pip_cache
       - setup_riot
       - run:
           name: "Generate base virtual environments."
@@ -666,7 +668,7 @@ jobs:
           snapshot: true
 
   debugger:
-    <<: *contrib_job
+    <<: *contrib_job_small
     steps:
       - run_test:
           pattern: "debugger"
@@ -756,8 +758,7 @@ jobs:
           docker_services: "localstack"
 
   ddtracerun:
-    <<: *contrib_job
-    parallelism: 8
+    <<: *contrib_job_large
     docker:
       - image: *ddtrace_dev_image
       - image: *redis_image
@@ -979,7 +980,7 @@ jobs:
 
   graphql:
     <<: *machine_executor
-    parallelism: 6
+    parallelism: 4
     steps:
       - run_test:
           pattern: "graphql"
@@ -995,7 +996,7 @@ jobs:
 
   gunicorn:
     <<: *machine_executor
-    parallelism: 8
+    parallelism: 5
     steps:
       - run_test:
           pattern: "gunicorn"
@@ -1082,7 +1083,7 @@ jobs:
 
   pytest:
     <<: *machine_executor
-    parallelism: 10
+    parallelism: 14
     steps:
       - run_test:
           pattern: 'pytest'
@@ -1266,7 +1267,7 @@ jobs:
 
   redis:
     <<: *machine_executor
-    parallelism: 5
+    parallelism: 4
     steps:
       - run_test:
           docker_services: 'redis rediscluster'
