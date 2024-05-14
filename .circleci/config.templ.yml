@@ -79,12 +79,39 @@ commands:
           root: .
           paths:
             - riot_requirements_combined.txt
+  download_riot_dependencies:
+    description: "Fill the pip cache with Python packages defined in .riot/requirements/*.txt files, only if the pip cache is empty"
+    steps:
+      - run:
+          name: "Update the pip cache"
+          command: |
+            download_package() {
+              py=$(echo "$@" | awk '{print $1}')
+              req=$(echo "$@" | awk '{$1=""; print $0}')
+              echo "Downloading ${req} for Python version ${py}"
+              pip download --no-deps --dest /tmp/pip_downloads/ --src /tmp/pip_downloads/ --progress-bar off --quiet --disable-pip-version-check --no-python-version-warning --python "python${py}" "${req}" || true
+            }
+            export -f download_package
+
+            pip cache info
+
+            if [ ! -f "$(pip cache dir)/.riot_packages_downloaded" ]
+            then
+              echo "Downloading riot packages to fill pip cache"
+              mkdir -p /tmp/pip_downloads/
+              cat "riot_requirements_combined.txt" | xargs -P 3 -n 2 -I {} bash -c 'download_package "{}"'
+              touch /root/.cache/pip/.riot_packages_downloaded
+              pip cache info
+            else
+              echo "Cache already exists, skipping downloading"
+            fi
+
   use_pip_cache:
     description: "Restore the saved pip cache and tell pip to use it"
     steps:
       - restore_cache:
           keys:
-            - &pip-cache v1-pip-cache-{{ checksum "riot_requirements_combined.txt" }}
+            - &pip-cache v0-pip-cache-{{ checksum "riot_requirements_combined.txt" }}
 
   save_coverage:
     description: "Save coverage.py results to workspace"
@@ -445,23 +472,8 @@ jobs:
       - checkout
       - create_combined_requirements_txt
       - restore_cache:
-          keys:
-            - &pip-cache v1-pip-cache-{{ checksum "riot_requirements_combined.txt" }}
-      - run:
-          name: "Update the pip cache"
-          command: |
-            download_package() {
-              py=$(echo "$@" | awk '{print $1}')
-              req=$(echo "$@" | awk '{$1=""; print $0}')
-              echo "Downloading ${req} for Python version ${py}"
-              pip download --no-deps --dest /tmp/pip_downloads/ --src /tmp/pip_downloads/ --progress-bar off --quiet --disable-pip-version-check --no-python-version-warning --python "python${py}" "${req}" || true
-            }
-            export -f download_package
-
-            pip cache info
-            mkdir -p /tmp/pip_downloads/
-            cat "riot_requirements_combined.txt" | xargs -P 2 -n 2 -I {} bash -c 'download_package "{}"'
-            pip cache info
+          key: &pip-cache v0-pip-cache-{{ checksum "riot_requirements_combined.txt" }}
+      - download_riot_dependencies
       - save_cache:
           key: *pip-cache
           paths:
