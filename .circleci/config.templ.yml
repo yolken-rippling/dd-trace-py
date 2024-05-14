@@ -112,6 +112,7 @@ commands:
       - restore_cache:
           keys:
             - &pip-cache v0-pip-cache-{{ checksum "riot_requirements_combined.txt" }}
+      - run: pip cache info
 
   save_coverage:
     description: "Save coverage.py results to workspace"
@@ -516,7 +517,7 @@ jobs:
     resource_class: large
     docker:
       - image: *ddtrace_dev_image
-    parallelism: 8
+    parallelism: 6
     steps:
       - checkout
       - setup_riot
