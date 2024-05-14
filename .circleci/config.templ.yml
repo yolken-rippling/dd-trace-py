@@ -85,11 +85,6 @@ commands:
       - restore_cache:
           keys:
             - &pip-cache v1-pip-cache-{{ checksum "riot_requirements_combined.txt" }}
-      - run:
-          command: |
-            echo 'export PIP_CACHE_DIR=pip_cache' >> "$BASH_ENV"
-            echo 'export PIP_VERBOSE=3' >> "$BASH_ENV"
-            source "$BASH_ENV"
 
   save_coverage:
     description: "Save coverage.py results to workspace"
@@ -459,7 +454,7 @@ jobs:
               py=$(echo "$@" | awk '{print $1}')
               req=$(echo "$@" | awk '{$1=""; print $0}')
               echo "Downloading ${req} for Python version ${py}"
-              pip download --no-deps --cache-dir pip_cache --dest /tmp/pip_downloads/ --src /tmp/pip_downloads/ --progress-bar off --quiet --disable-pip-version-check --no-python-version-warning --python "python${py}" "${req}" || true
+              pip download --no-deps --dest /tmp/pip_downloads/ --src /tmp/pip_downloads/ --progress-bar off --quiet --disable-pip-version-check --no-python-version-warning --python "python${py}" "${req}" || true
             }
             export -f download_package
 
@@ -470,7 +465,7 @@ jobs:
       - save_cache:
           key: *pip-cache
           paths:
-            - pip_cache
+            - /root/.cache/pip/
 
   coverage_report:
     executor: python310
