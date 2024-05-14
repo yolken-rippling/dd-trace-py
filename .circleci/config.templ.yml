@@ -112,7 +112,6 @@ commands:
       - restore_cache:
           keys:
             - &pip-cache v0-pip-cache-{{ checksum "riot_requirements_combined.txt" }}
-      - run: pip cache info
 
   save_coverage:
     description: "Save coverage.py results to workspace"
