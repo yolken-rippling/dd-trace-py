@@ -520,6 +520,8 @@ jobs:
     parallelism: 6
     steps:
       - checkout
+      - attach_workspace:
+          at: .
       - use_pip_cache
       - setup_riot
       - run:
