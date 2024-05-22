@@ -324,6 +324,10 @@ class SpanAggregator(SpanProcessor):
 
                 if should_partial_flush:
                     log.debug("Partially flushing %d spans for trace %d", num_finished, span.trace_id)
+                    if not finished:
+                        log.warning("No finished spans in partial flush whil flushing span = %s", span)
+                        log.warning("trace = %s , trace_spans = %s, trace.num_finished = %s, len(trace_spans), finished = %s, num_finished = %s", trace, trace_spans, trace.num_finished, len(trace_spans), finished, num_finished)
+                        log.warning("Allowing exception!")
                     finished[0].set_metric("_dd.py.partial_flush", num_finished)
 
                 trace.num_finished -= num_finished
