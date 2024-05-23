@@ -23,6 +23,10 @@ class Trace:
     def finished(self) -> bool:
         return len(self._spans) == self._num_finished
 
+    @property
+    def num_finished(self) -> int:
+        return self._num_finished
+
     def add_span(self, span: Span):
         with self._lock:
             self._spans.add(span)

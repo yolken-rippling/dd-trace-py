@@ -20,12 +20,12 @@ from ddtrace.internal import gitmetadata
 from ddtrace.internal.constants import HIGHER_ORDER_TRACE_ID_BITS
 from ddtrace.internal.constants import LAST_DD_PARENT_ID_KEY
 from ddtrace.internal.constants import MAX_UINT_64BITS
+from ddtrace.internal.core.trace import traces as _traces
 from ddtrace.internal.logger import get_logger
 from ddtrace.internal.sampling import SpanSamplingRule
 from ddtrace.internal.sampling import is_single_span_sampled
 from ddtrace.internal.service import ServiceStatusError
 from ddtrace.internal.writer import TraceWriter
-from ddtrace.internal.core.trace import traces as _traces
 
 
 if config._telemetry_enabled:
@@ -331,7 +331,7 @@ class SpanAggregator(SpanProcessor):
                 self._writer.write(spans)
                 return
 
-            log.debug("trace %d has %d spans, %d finished", span.trace_id, len(trace.spans), trace.num_finished)
+            log.debug("trace %d has %d spans, %d finished", span.trace_id, len(trace), trace.num_finished)
             return None
 
     def shutdown(self, timeout):

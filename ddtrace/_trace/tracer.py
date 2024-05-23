@@ -617,7 +617,8 @@ class Tracer(object):
         self._writer = self._writer.recreate()
 
         # Clear any aggregated spans
-        # DEV: We don't want to keep track of the parent process spans, because they will never be finished in this process
+        # DEV: We don't want to keep track of the parent process spans, because they will
+        #      never be finished in this process
         _traces.clear()
 
         # Re-create processors
