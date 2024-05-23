@@ -41,6 +41,7 @@ from ddtrace.internal import hostname
 from ddtrace.internal.atexit import register_on_exit_signal
 from ddtrace.internal.constants import SAMPLING_DECISION_TRACE_TAG_KEY
 from ddtrace.internal.constants import SPAN_API_DATADOG
+from ddtrace.internal.core.trace import traces as _traces
 from ddtrace.internal.dogstatsd import get_dogstatsd_client
 from ddtrace.internal.logger import get_logger
 from ddtrace.internal.peer_service.processor import PeerServiceProcessor
@@ -614,6 +615,12 @@ class Tracer(object):
 
         # Re-create the background writer thread
         self._writer = self._writer.recreate()
+
+        # Clear any aggregated spans
+        # DEV: We don't want to keep track of the parent process spans, because they will never be finished in this process
+        _traces.clear()
+
+        # Re-create processors
         self._span_processors, self._appsec_processor, self._deferred_processors = _default_span_processors_factory(
             self._filters,
             self._writer,

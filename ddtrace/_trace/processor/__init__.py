@@ -25,6 +25,7 @@ from ddtrace.internal.sampling import SpanSamplingRule
 from ddtrace.internal.sampling import is_single_span_sampled
 from ddtrace.internal.service import ServiceStatusError
 from ddtrace.internal.writer import TraceWriter
+from ddtrace.internal.core.trace import traces as _traces
 
 
 if config._telemetry_enabled:
@@ -271,16 +272,12 @@ class SpanAggregator(SpanProcessor):
     _partial_flush_min_spans = attr.ib(type=int)
     _trace_processors = attr.ib(type=Iterable[TraceProcessor])
     _writer = attr.ib(type=TraceWriter)
-    _traces = attr.ib(
-        factory=lambda: defaultdict(lambda: SpanAggregator._Trace()),
-        init=False,
-        type=DefaultDict[int, "_Trace"],
-        repr=False,
-    )
+
     if config._span_aggregator_rlock:
         _lock = attr.ib(init=False, factory=RLock, repr=False, type=Union[RLock, Lock])
     else:
         _lock = attr.ib(init=False, factory=Lock, repr=False, type=Union[RLock, Lock])
+
     # Tracks the number of spans created and tags each count with the api that was used
     # ex: otel api, opentracing api, datadog api
     _span_metrics = attr.ib(
@@ -295,8 +292,7 @@ class SpanAggregator(SpanProcessor):
     def on_span_start(self, span):
         # type: (Span) -> None
         with self._lock:
-            trace = self._traces[span.trace_id]
-            trace.spans.append(span)
+            _traces.add_span(span)
             self._span_metrics["spans_created"][span._span_api] += 1
             self._queue_span_count_metrics("spans_created", "integration_name")
 
@@ -304,32 +300,23 @@ class SpanAggregator(SpanProcessor):
         # type: (Span) -> None
         with self._lock:
             self._span_metrics["spans_finished"][span._span_api] += 1
-            trace = self._traces[span.trace_id]
-            trace.num_finished += 1
-            should_partial_flush = self._partial_flush_enabled and trace.num_finished >= self._partial_flush_min_spans
-            if trace.num_finished == len(trace.spans) or should_partial_flush:
-                trace_spans = trace.spans
-                trace.spans = []
-                if trace.num_finished < len(trace_spans):
-                    finished = []
-                    for s in trace_spans:
-                        if s.finished:
-                            finished.append(s)
-                        else:
-                            trace.spans.append(s)
-                else:
-                    finished = trace_spans
+            trace = _traces.get_trace(span.trace_id)
+            num_finished = _traces.finish_span(span)
+
+            should_partial_flush = self._partial_flush_enabled and num_finished >= self._partial_flush_min_spans
+            if trace.finished or should_partial_flush:
+                finished = trace.remove_finished_spans()
+                if not finished:
+                    log.warning("tried to flush trace %d but no spans were finished", span.trace_id)
+                    return
 
                 num_finished = len(finished)
-
                 if should_partial_flush:
                     log.debug("Partially flushing %d spans for trace %d", num_finished, span.trace_id)
                     finished[0].set_metric("_dd.py.partial_flush", num_finished)
 
-                trace.num_finished -= num_finished
-
-                if len(trace.spans) == 0:
-                    del self._traces[span.trace_id]
+                if not len(trace):
+                    _traces.remove_trace(span.trace_id)
 
                 spans = finished  # type: Optional[List[Span]]
                 for tp in self._trace_processors:
